@@ -1,0 +1,30 @@
+<svg viewBox="0 0 1200 720" xmlns="http://www.w3.org/2000/svg" font-family="Inter, Segoe UI, Arial, sans-serif">
+  <rect width="1200" height="720" rx="16" fill="#f1f5f9" stroke="#e2e8f0"/>
+  <!-- fake website -->
+  <rect x="0" y="0" width="1200" height="64" rx="16" fill="#fff"/>
+  <text x="50" y="40" font-size="20" font-weight="700" fill="#0f766e">Clínica Exemplo</text>
+  <g font-size="15" fill="#475569"><text x="760" y="40">Serviços</text><text x="860" y="40">Equipe</text><text x="950" y="40">Contato</text></g>
+  <text x="80" y="200" font-size="46" font-weight="800" fill="#0f172a">Seu sorriso,</text>
+  <text x="80" y="256" font-size="46" font-weight="800" fill="#0f766e">nossa prioridade.</text>
+  <text x="80" y="300" font-size="18" fill="#64748b">Atendimento odontológico completo para toda a família.</text>
+  <rect x="80" y="330" width="180" height="48" rx="12" fill="#0f766e"/><text x="110" y="360" font-size="16" font-weight="600" fill="#fff">Agendar agora</text>
+  <rect x="80" y="440" width="300" height="160" rx="16" fill="#e2e8f0"/><rect x="410" y="440" width="300" height="160" rx="16" fill="#e2e8f0"/>
+  <!-- widget open -->
+  <rect x="790" y="150" width="360" height="460" rx="20" fill="#fff" stroke="#e2e8f0"/>
+  <path d="M790 170a20 20 0 0 1 20-20h320a20 20 0 0 1 20 20v44H790z" fill="#4f46e5"/>
+  <text x="816" y="186" font-size="15" font-weight="700" fill="#fff">Assistente da Clínica</text>
+  <text x="816" y="204" font-size="12" fill="#c7d2fe">Responde em segundos</text>
+  <rect x="812" y="240" width="250" height="54" rx="14" fill="#f1f5f9"/>
+  <text x="826" y="264" font-size="13" fill="#0f172a">Olá! Posso ajudar com horários,</text><text x="826" y="282" font-size="13" fill="#0f172a">serviços e agendamentos.</text>
+  <rect x="900" y="316" width="226" height="36" rx="14" fill="#4f46e5"/><text x="914" y="339" font-size="13" fill="#fff">Quanto custa uma limpeza?</text>
+  <rect x="812" y="376" width="270" height="54" rx="14" fill="#f1f5f9"/>
+  <text x="826" y="400" font-size="13" fill="#0f172a">Os valores variam conforme a</text><text x="826" y="418" font-size="13" fill="#0f172a">avaliação. Quer agendar uma?</text>
+  <rect x="808" y="545" width="270" height="42" rx="21" fill="#f8fafc" stroke="#cbd5e1"/><text x="826" y="571" font-size="13" fill="#94a3b8">Digite sua mensagem…</text>
+  <circle cx="1112" cy="566" r="18" fill="#4f46e5"/>
+  <!-- bubble -->
+  <circle cx="1128" cy="650" r="34" fill="#4f46e5"/><rect x="1110" y="634" width="36" height="24" rx="8" fill="#fff"/><path d="M1118 656 L1118 666 L1128 656z" fill="#fff"/><circle cx="1120" cy="646" r="2.5" fill="#4f46e5"/><circle cx="1128" cy="646" r="2.5" fill="#4f46e5"/><circle cx="1136" cy="646" r="2.5" fill="#4f46e5"/>
+  <!-- snippet -->
+  <rect x="80" y="640" width="640" height="56" rx="10" fill="#0f172a"/>
+  <text x="96" y="673" font-size="12" font-family="Consolas, monospace" fill="#a5b4fc">&lt;script src="https://cdn.flowforge.dev/widget.js" data-bot="BOT_ID" async&gt;&lt;/script&gt;</text>
+  <text x="900" y="708" font-size="12" fill="#94a3b8">Mockup conceitual — dados fictícios</text>
+</svg>

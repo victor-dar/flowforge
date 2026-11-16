@@ -1,0 +1,42 @@
+<svg viewBox="0 0 1200 720" xmlns="http://www.w3.org/2000/svg" font-family="Inter, Segoe UI, Arial, sans-serif">
+  <rect width="1200" height="720" rx="16" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="60" y="70" font-size="28" font-weight="700" fill="#0f172a">Ambiente de testes</text>
+  <text x="60" y="98" font-size="15" fill="#64748b">Converse com seu assistente antes de publicar.</text>
+  <!-- chat -->
+  <rect x="60" y="130" width="640" height="550" rx="16" fill="#fff" stroke="#e2e8f0"/>
+  <rect x="60" y="130" width="640" height="64" rx="16" fill="#4f46e5"/>
+  <circle cx="102" cy="162" r="18" fill="#e0e7ff"/><rect x="92" y="152" width="20" height="18" rx="5" fill="#4f46e5"/><circle cx="98" cy="160" r="2.2" fill="#fff"/><circle cx="106" cy="160" r="2.2" fill="#fff"/>
+  <text x="134" y="158" font-size="16" font-weight="700" fill="#fff">Assistente da Clínica Exemplo</text>
+  <text x="134" y="178" font-size="12" fill="#c7d2fe">● Online</text>
+  <rect x="90" y="220" width="380" height="56" rx="14" fill="#f1f5f9"/>
+  <text x="108" y="244" font-size="14" fill="#0f172a">Olá! Sou o assistente da Clínica Exemplo.</text><text x="108" y="264" font-size="14" fill="#0f172a">Como posso ajudar?</text>
+  <rect x="380" y="300" width="290" height="40" rx="14" fill="#4f46e5"/>
+  <text x="398" y="325" font-size="14" fill="#fff">Qual o horário de atendimento?</text>
+  <rect x="90" y="364" width="450" height="76" rx="14" fill="#f1f5f9"/>
+  <text x="108" y="388" font-size="14" fill="#0f172a">Atendemos de segunda a sexta, das 8h às 18h.</text>
+  <text x="108" y="408" font-size="14" fill="#0f172a">Quer agendar uma avaliação?</text>
+  <text x="108" y="428" font-size="11" fill="#94a3b8">Fonte: horarios.pdf</text>
+  <rect x="380" y="464" width="290" height="40" rx="14" fill="#4f46e5"/>
+  <text x="398" y="489" font-size="14" fill="#fff">Vocês fazem clareamento?</text>
+  <rect x="90" y="528" width="400" height="56" rx="14" fill="#f1f5f9"/>
+  <text x="108" y="552" font-size="14" fill="#0f172a">Sim! Temos clareamento a laser e caseiro.</text>
+  <text x="108" y="572" font-size="14" fill="#0f172a">Posso explicar a diferença?</text>
+  <rect x="84" y="620" width="520" height="44" rx="22" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="108" y="648" font-size="14" fill="#94a3b8">Digite uma mensagem de teste…</text>
+  <circle cx="650" cy="642" r="20" fill="#4f46e5"/><path d="M643 633 L661 642 L643 651 L647 642z" fill="#fff"/>
+  <!-- settings panel -->
+  <rect x="730" y="130" width="410" height="550" rx="16" fill="#fff" stroke="#e2e8f0"/>
+  <text x="756" y="172" font-size="18" font-weight="700" fill="#0f172a">Ajustes rápidos</text>
+  <g font-size="13" fill="#475569">
+    <text x="756" y="214">Tom de comunicação</text>
+    <rect x="756" y="224" width="358" height="38" rx="10" fill="#f8fafc" stroke="#cbd5e1"/><text x="772" y="248" fill="#0f172a" font-size="14">Acolhedor e profissional</text>
+    <text x="756" y="298">Mensagem de boas-vindas</text>
+    <rect x="756" y="308" width="358" height="70" rx="10" fill="#f8fafc" stroke="#cbd5e1"/><text x="772" y="335" fill="#0f172a" font-size="14">Olá! Sou o assistente da…</text>
+    <text x="756" y="412">Documentos na base</text>
+    <rect x="756" y="422" width="358" height="34" rx="8" fill="#eef2ff"/><text x="772" y="444" fill="#4338ca" font-size="13">horarios.pdf</text>
+    <rect x="756" y="464" width="358" height="34" rx="8" fill="#eef2ff"/><text x="772" y="486" fill="#4338ca" font-size="13">servicos.pdf</text>
+    <rect x="756" y="506" width="358" height="34" rx="8" fill="#eef2ff"/><text x="772" y="528" fill="#4338ca" font-size="13">perguntas-frequentes.txt</text>
+  </g>
+  <rect x="756" y="600" width="358" height="48" rx="12" fill="#4f46e5"/><text x="880" y="630" font-size="16" font-weight="600" fill="#fff">Publicar chatbot</text>
+  <text x="900" y="708" font-size="12" fill="#94a3b8">Mockup conceitual — dados fictícios</text>
+</svg>

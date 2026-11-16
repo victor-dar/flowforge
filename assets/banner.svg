@@ -1,0 +1,19 @@
+<svg viewBox="0 0 1200 300" xmlns="http://www.w3.org/2000/svg" font-family="Inter, Segoe UI, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#9333ea"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="300" rx="20" fill="url(#bg)"/>
+  <circle cx="1080" cy="60" r="150" fill="#ffffff" opacity="0.06"/>
+  <circle cx="980" cy="260" r="110" fill="#ffffff" opacity="0.06"/>
+  <g transform="translate(90,90)">
+    <rect width="120" height="120" rx="28" fill="#ffffff"/>
+    <path d="M30 42h60a8 8 0 0 1 8 8v28a8 8 0 0 1-8 8H62l-14 14V86H30a8 8 0 0 1-8-8V50a8 8 0 0 1 8-8z" fill="#4f46e5"/>
+    <circle cx="46" cy="64" r="5" fill="#fff"/><circle cx="60" cy="64" r="5" fill="#fff"/><circle cx="74" cy="64" r="5" fill="#fff"/>
+  </g>
+  <text x="250" y="150" font-size="76" font-weight="800" fill="#ffffff">FlowForge</text>
+  <text x="252" y="195" font-size="28" fill="#e0e7ff">Plataforma no-code para criar chatbots com IA</text>
+  <text x="252" y="240" font-size="22" font-style="italic" fill="#c7d2fe">Sua ideia. Sua inteligência. Sua automação.</text>
+</svg>

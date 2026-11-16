@@ -1,0 +1,33 @@
+# Dependências
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Build
+dist/
+build/
+.vite/
+
+# Ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# Dados locais
+*.sqlite3
+postgres-data/
+qdrant-storage/
+redis-data/
+
+# Editores e SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Testes e logs
+.pytest_cache/
+coverage/
+*.log
