@@ -21,10 +21,11 @@ FlowForge é um MVP para criar chatbots com base de conhecimento, testar respost
 - Isolamento de chatbots por usuário e gerenciamento dos próprios bots.
 - Upload e exclusão de documentos PDF, TXT, MD e CSV; extração e recuperação lexical simples de trechos.
 - Chat público com histórico de conversas e widget incorporável.
-- Integração opcional com a API de chat da OpenAI. Sem chave configurada, a API responde usando o conteúdo recuperado da base.
+- Integração opcional com a API de chat da OpenAI, com limite configurável de tokens de saída e erros do provedor reportados como indisponibilidade. Sem chave configurada, a API responde usando o conteúdo recuperado da base.
+- Proteção contra abuso com limites de autenticação por IP, limite de chat por IP e cota diária por chatbot, persistidos no banco.
 - SQLite como banco padrão local e no Docker Compose.
 
-Este é um MVP, não um serviço SaaS pronto para produção: a recuperação de documentos é lexical (não usa embeddings/vetores), e ainda faltam controles como rate limiting, cotas e administração de contas.
+Este é um MVP, não um serviço SaaS pronto para produção: a recuperação de documentos é lexical (não usa embeddings/vetores), e ainda faltam administração de contas e medição de gastos monetários por provedor. A cota diária limita quantidade de mensagens, não um valor específico em moeda.
 
 ## Rodar localmente
 
@@ -72,6 +73,8 @@ Em produção:
 - Defina `APP_ENV=production`.
 - Configure `SECRET_KEY` com pelo menos 32 caracteres, aleatória e exclusiva; a API rejeita a chave padrão e o valor de exemplo.
 - Configure `CORS_ORIGINS` somente com origens explícitas; origem wildcard é rejeitada.
+- Ajuste os limites `AUTH_RATE_LIMIT_PER_MINUTE`, `PUBLIC_CHAT_RATE_LIMIT_PER_MINUTE`, `PUBLIC_CHAT_DAILY_LIMIT_PER_BOT` e `AI_MAX_OUTPUT_TOKENS` conforme o uso e o orçamento esperados. Os limites de requisição são compartilhados por processos que usam o mesmo banco.
+- Se a API estiver atrás de um proxy, configure o Uvicorn para confiar somente nos endereços dos proxies conhecidos; os limites por IP usam o endereço do cliente visto pela API.
 - Use armazenamento e backups adequados ao ambiente. SQLite atende ao desenvolvimento/MVP; avalie um banco gerenciado para produção.
 - Armazene chaves em um gerenciador de segredos e configure HTTPS no proxy/ingress.
 
@@ -88,6 +91,8 @@ pytest -q
 ```
 
 O workflow [CI](.github/workflows/ci.yml) executa os testes do backend com Python 3.12 e o build do frontend com Node 22 em pushes e pull requests.
+
+Os limites são aplicados em janelas fixas: 10 tentativas de autenticação por IP/minuto, 20 mensagens de chat por IP/minuto e 500 mensagens por chatbot/dia por padrão. O contador de chat inclui tentativas que falham no provedor de IA; ajuste os valores no ambiente. O máximo de saída OpenAI padrão é 600 tokens.
 
 ## Documentação
 

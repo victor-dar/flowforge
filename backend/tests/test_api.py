@@ -3,7 +3,7 @@ import hashlib
 
 import pytest
 
-from app.config import Settings
+from app.config import Settings, settings
 
 
 def register(client, email="owner@example.com", password="senha-segura-123"):
@@ -38,6 +38,18 @@ def test_register_login_and_duplicate_email(client):
 
     duplicate = client.post("/api/auth/register", json=credentials)
     assert duplicate.status_code == 409
+
+
+def test_authentication_requests_are_rate_limited(client, monkeypatch):
+    monkeypatch.setattr(settings, "auth_rate_limit_per_minute", 1)
+    credentials = {"email": "missing@example.com", "password": "senha-segura-123"}
+
+    first = client.post("/api/auth/login", json=credentials)
+    second = client.post("/api/auth/login", json=credentials)
+
+    assert first.status_code == 401
+    assert second.status_code == 429
+    assert int(second.headers["retry-after"]) > 0
 
 
 def test_chatbots_are_isolated_between_users(client):
@@ -135,6 +147,79 @@ def test_public_widget_and_chat(client, monkeypatch):
     )
     assert chat.status_code == 200
     assert chat.json()["answer"] == "Resposta de teste"
+
+
+def test_daily_chat_limit_is_shared_by_bot(client, monkeypatch):
+    headers = auth_headers(client)
+    bot = client.post("/api/bots", headers=headers, json={"name": "Limitado"}).json()
+    monkeypatch.setattr(settings, "public_chat_daily_limit_per_bot", 1)
+    payload = {"message": "Olá", "visitor_id": "visitor-1"}
+
+    first = client.post(f"/api/public/bots/{bot['id']}/chat", json=payload)
+    second = client.post(f"/api/public/bots/{bot['id']}/chat", json=payload)
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert int(second.headers["retry-after"]) > 0
+
+
+def test_invalid_conversation_does_not_consume_daily_bot_quota(client, monkeypatch):
+    headers = auth_headers(client)
+    bot = client.post("/api/bots", headers=headers, json={"name": "Limitado"}).json()
+    monkeypatch.setattr(settings, "public_chat_daily_limit_per_bot", 1)
+
+    invalid = client.post(
+        f"/api/public/bots/{bot['id']}/chat",
+        json={"message": "Olá", "visitor_id": "visitor-1", "conversation_id": 999},
+    )
+    valid = client.post(
+        f"/api/public/bots/{bot['id']}/chat",
+        json={"message": "Olá", "visitor_id": "visitor-1"},
+    )
+
+    assert invalid.status_code == 404
+    assert valid.status_code == 200
+
+
+def test_provider_failure_returns_503_without_saving_chat(client, monkeypatch):
+    from app.ai import AIProviderError
+
+    headers = auth_headers(client)
+    bot = client.post("/api/bots", headers=headers, json={"name": "Sem provedor"}).json()
+
+    async def fail_answer(instructions, question, context):
+        raise AIProviderError("O serviço de IA está indisponível no momento. Tente novamente.")
+
+    monkeypatch.setattr("app.main.generate_answer", fail_answer)
+    response = client.post(
+        f"/api/public/bots/{bot['id']}/chat",
+        json={"message": "Olá", "visitor_id": "visitor-1"},
+    )
+
+    assert response.status_code == 503
+    assert response.headers["retry-after"] == "30"
+    assert client.get(f"/api/bots/{bot['id']}/conversations", headers=headers).json() == []
+
+
+def test_ai_client_wraps_network_errors(monkeypatch):
+    import asyncio
+
+    import httpx
+
+    from app.ai import AIProviderError, generate_answer
+
+    monkeypatch.setattr(settings, "openai_api_key", "test-key")
+
+    async def fail_request(self, *args, **kwargs):
+        raise httpx.ConnectError(
+            "simulated network failure",
+            request=httpx.Request("POST", "https://api.openai.com/v1/chat/completions"),
+        )
+
+    monkeypatch.setattr(httpx.AsyncClient, "post", fail_request)
+
+    with pytest.raises(AIProviderError, match="indisponível"):
+        asyncio.run(generate_answer("instruções", "pergunta", ""))
 
 
 def test_production_rejects_default_secret_and_wildcard_cors():

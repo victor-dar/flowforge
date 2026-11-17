@@ -3,18 +3,19 @@ from io import BytesIO
 from pathlib import Path
 import re
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
 from pypdf import PdfReader
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.ai import generate_answer, relevant_context
+from app.ai import AIProviderError, generate_answer, relevant_context
 from app.auth import create_token, get_current_user, get_db, hash_password, verify_password
 from app.config import settings
 from app.models import Base, Chatbot, Conversation, KnowledgeDocument, Message, SessionLocal, User, engine
 from app.schemas import BotCreate, BotOut, BotUpdate, ChatOut, ChatRequest, Credentials, TokenOut, UserOut
+from app.rate_limit import client_address, consume_rate_limit
 from app.widget_page import WIDGET_HTML
 
 
@@ -45,6 +46,16 @@ def health():
     return {"status": "ok"}
 
 
+def enforce_auth_rate_limit(request: Request, db: Session = Depends(get_db)) -> None:
+    address = client_address(request.client.host if request.client else None)
+    consume_rate_limit(
+        db,
+        f"auth:{address}",
+        settings.auth_rate_limit_per_minute,
+        60,
+    )
+
+
 @app.get("/widget.js")
 def widget_script():
     return Response(
@@ -58,7 +69,12 @@ def widget_page():
     return WIDGET_HTML
 
 
-@app.post("/api/auth/register", response_model=TokenOut, status_code=201)
+@app.post(
+    "/api/auth/register",
+    response_model=TokenOut,
+    status_code=201,
+    dependencies=[Depends(enforce_auth_rate_limit)],
+)
 def register(data: Credentials, db: Session = Depends(get_db)):
     email = data.email.lower()
     if db.scalar(select(User).where(User.email == email)):
@@ -70,7 +86,11 @@ def register(data: Credentials, db: Session = Depends(get_db)):
     return TokenOut(access_token=create_token(user.id), user=UserOut.model_validate(user))
 
 
-@app.post("/api/auth/login", response_model=TokenOut)
+@app.post(
+    "/api/auth/login",
+    response_model=TokenOut,
+    dependencies=[Depends(enforce_auth_rate_limit)],
+)
 def login(data: Credentials, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == data.email.lower()))
     if not user or not verify_password(data.password, user.password_hash):
@@ -188,21 +208,56 @@ def get_public_bot(bot_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/api/public/bots/{bot_id}/chat", response_model=ChatOut)
-async def public_chat(bot_id: int, data: ChatRequest, db: Session = Depends(get_db)):
+async def public_chat(
+    bot_id: int,
+    data: ChatRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
     bot = db.scalar(select(Chatbot).options(selectinload(Chatbot.documents)).where(Chatbot.id == bot_id))
     if not bot:
         raise HTTPException(status_code=404, detail="Chatbot não encontrado")
+    conversation = None
     if data.conversation_id:
-        conversation = db.scalar(select(Conversation).where(Conversation.id == data.conversation_id, Conversation.bot_id == bot_id, Conversation.visitor_id == data.visitor_id))
+        conversation = db.scalar(
+            select(Conversation).where(
+                Conversation.id == data.conversation_id,
+                Conversation.bot_id == bot_id,
+                Conversation.visitor_id == data.visitor_id,
+            )
+        )
         if not conversation:
             raise HTTPException(status_code=404, detail="Conversa não encontrada")
-    else:
+
+    address = client_address(request.client.host if request.client else None)
+    consume_rate_limit(
+        db,
+        f"chat-ip:{address}",
+        settings.public_chat_rate_limit_per_minute,
+        60,
+    )
+    consume_rate_limit(
+        db,
+        f"chat-bot:{bot_id}",
+        settings.public_chat_daily_limit_per_bot,
+        86400,
+    )
+
+    if conversation is None:
         conversation = Conversation(bot_id=bot_id, visitor_id=data.visitor_id)
         db.add(conversation)
         db.flush()
     db.add(Message(conversation_id=conversation.id, role="user", content=data.message))
     context = relevant_context(data.message, [document.content for document in bot.documents])
-    answer = await generate_answer(bot.instructions, data.message, context)
+    try:
+        answer = await generate_answer(bot.instructions, data.message, context)
+    except AIProviderError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=503,
+            detail=str(exc),
+            headers={"Retry-After": "30"},
+        ) from exc
     db.add(Message(conversation_id=conversation.id, role="assistant", content=answer))
     db.commit()
     return ChatOut(conversation_id=conversation.id, answer=answer)

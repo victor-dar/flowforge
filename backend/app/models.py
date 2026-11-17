@@ -73,3 +73,12 @@ class Message(Base):
     content: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     conversation: Mapped[Conversation] = relationship(back_populates="messages")
+
+
+class RateLimitBucket(Base):
+    __tablename__ = "rate_limit_buckets"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    window_start: Mapped[int] = mapped_column(Integer, primary_key=True)
+    expires_at: Mapped[int] = mapped_column(Integer, index=True, nullable=False)
+    count: Mapped[int] = mapped_column(Integer, nullable=False)
