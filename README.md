@@ -1,53 +1,85 @@
-# FlowForge
+<p align="center">
+  <img src="assets/banner.svg" alt="FlowForge — plataforma para criar assistentes de atendimento" width="100%">
+</p>
 
-**Crie, configure e publique assistentes de atendimento para o seu negócio.**
+<p align="center">
+  <a href="https://github.com/victor-dar/flowforge/actions/workflows/ci.yml"><img src="https://github.com/victor-dar/flowforge/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/status-MVP%20em%20desenvolvimento-6d5dfc" alt="MVP em desenvolvimento">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licen%C3%A7a-MIT-22a06b" alt="Licença MIT"></a>
+</p>
 
-FlowForge é um MVP open source de uma plataforma para criar chatbots com uma base de conhecimento e publicá-los em sites por meio de um widget incorporável. O repositório reúne um painel web em React/TypeScript e uma API em FastAPI.
+<p align="center">
+  <strong>Crie assistentes de atendimento, ensine com seus documentos e publique no seu site.</strong>
+</p>
 
-> **Estado do produto:** MVP funcional em desenvolvimento. A aplicação já permite criar conta, gerenciar assistentes, carregar documentos, testar o chat e incorporar o widget. Ainda não é um SaaS pronto para produção: a busca de conhecimento é lexical, o banco padrão é SQLite e faltam recursos de operação, privacidade e administração.
+<p align="center">
+  <a href="#sobre-o-projeto">Sobre</a> ·
+  <a href="#funcionalidades">Funcionalidades</a> ·
+  <a href="#início-rápido">Início rápido</a> ·
+  <a href="docs/GUIA_USUARIO.md">Guia do usuário</a> ·
+  <a href="docs/API.md">API</a>
+</p>
 
-## Visão rápida
+## Sobre o projeto
 
-| Área | Implementação atual |
+FlowForge é um projeto open source em estágio de MVP para configurar chatbots de atendimento com informações de um negócio e incorporá-los em sites. O repositório contém um painel web em React e TypeScript, uma API em FastAPI e um widget JavaScript.
+
+> **Estado:** funcional para desenvolvimento e demonstração; ainda não recomendado como serviço SaaS de produção. A busca de documentos é lexical, o armazenamento padrão é SQLite e recursos operacionais e de privacidade ainda precisam evoluir.
+
+## Funcionalidades
+
+- Cadastro, login e gerenciamento isolado de assistentes por usuário.
+- Configuração de nome, empresa, instruções, mensagem inicial e cor.
+- Upload de documentos PDF, TXT, MD e CSV, com limite padrão de 5 MB.
+- Teste de conversa no painel e histórico acessível pela API.
+- Widget incorporável em sites por meio de um snippet JavaScript.
+- Integração opcional com uma API compatível com OpenAI.
+- Limites de requisição para autenticação e chat público.
+
+Sem chave de IA, o chat responde com trechos encontrados nos documentos ou informa que não encontrou contexto suficiente. A recuperação atual usa correspondência lexical; não usa embeddings ou busca vetorial.
+
+## Interface
+
+<p align="center">
+  <img src="assets/screenshots/dashboard.png" alt="Visão geral do painel FlowForge" width="82%">
+</p>
+<p align="center">
+  <sub>Painel em estado inicial, sem dados de usuário.</sub>
+</p>
+
+<details>
+  <summary>Ver tela de acesso</summary>
+  <p align="center">
+    <img src="assets/screenshots/login.png" alt="Tela de acesso do FlowForge" width="65%">
+  </p>
+</details>
+
+## Início rápido
+
+### Com Docker Compose
+
+Requer Docker Engine e Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+Após a inicialização:
+
+| Serviço | Endereço |
 |---|---|
-| Painel | React, TypeScript e Vite |
-| API | Python, FastAPI, Pydantic e SQLAlchemy |
-| Persistência padrão | SQLite |
-| Autenticação | Senhas com PBKDF2-HMAC-SHA256 e JWT Bearer |
-| Conhecimento | Extração de PDF/TXT/MD/CSV e busca lexical simples |
-| Provedor de IA | API compatível com OpenAI, opcional |
-| Widget | JavaScript que incorpora um iframe hospedado pela API |
-| Testes | Pytest para API e build/type-check do frontend |
+| Painel | <http://localhost:5173> |
+| API | <http://localhost:8000> |
+| Documentação interativa | <http://localhost:8000/docs> |
+| Verificação de saúde | <http://localhost:8000/health> |
 
-![Tela de acesso](assets/screenshots/login.png)
+O Compose usa SQLite e persiste os dados no volume `flowforge_data`. Para usar um provedor de IA, configure `OPENAI_API_KEY` no ambiente antes de iniciar os serviços.
 
-![Visão geral do painel em estado vazio](assets/screenshots/dashboard.png)
+### Execução local
 
-*Capturas reais do frontend local; a visão geral mostra o estado vazio, sem dados de usuário.*
+Requer Python 3.11 ou superior, Node.js 22 e npm.
 
-## O que já é possível fazer
-
-- Criar uma conta e entrar no painel.
-- Criar, editar e excluir assistentes.
-- Personalizar instruções, mensagem inicial e cor.
-- Carregar documentos PDF, TXT, Markdown e CSV (limite padrão de 5 MB por arquivo).
-- Testar conversas pelo painel e consultar o histórico pela API.
-- Publicar o chat em outro site com um snippet JavaScript.
-- Usar limites de requisições para autenticação e chat público.
-- Executar sem chave de IA: nesse modo, o chat retorna trechos recuperados dos documentos ou uma resposta informando que não há contexto.
-
-## Capturas
-
-As imagens em [`assets/screenshots/`](assets/screenshots/) mostram a interface da versão atual. Podem ser atualizadas quando o painel mudar.
-
-## Começar localmente
-
-### Requisitos
-
-- Python 3.11 ou superior
-- Node.js 22 e npm
-
-### API
+**1. Inicie a API:**
 
 ```bash
 cd backend
@@ -58,71 +90,32 @@ cp .env.example .env
 uvicorn app.main:app --reload
 ```
 
-API: <http://localhost:8000>
-
-Saúde: <http://localhost:8000/health>
-
-Documentação interativa: <http://localhost:8000/docs>
-
-### Painel
-
-Em outro terminal:
+**2. Em outro terminal, inicie o painel:**
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-Painel: <http://localhost:5173>
-
-O painel usa `http://localhost:8000` por padrão. Para outra URL, configure `VITE_API_URL` antes de iniciar/buildar o frontend.
-
-### Docker Compose
-
-Na raiz do repositório:
-
-```bash
-docker compose up --build
-```
-
-O Compose publica o painel na porta 5173 e a API na 8000, e armazena o SQLite no volume `flowforge_data`. As imagens atuais precisam das dependências listadas nos Dockerfiles. Para configurar provedores ou ambiente, defina as variáveis descritas em [`backend/.env.example`](backend/.env.example) e no `docker-compose.yml`.
+O painel usa `http://localhost:8000` como URL padrão da API. Para apontar a outro endereço, defina `VITE_API_URL` antes de iniciar o Vite ou gerar o build.
 
 ## Configuração
 
-As configurações da API são lidas de variáveis de ambiente e do arquivo `backend/.env`:
+A API lê configurações do ambiente e de `backend/.env`. As opções disponíveis e seus valores padrão estão em [`backend/.env.example`](backend/.env.example).
 
-| Variável | Padrão | Descrição |
-|---|---|---|
-| `APP_ENV` | `development` | Defina `production` para ativar validações de inicialização |
-| `DATABASE_URL` | `sqlite:///./flowforge.db` | URL SQLAlchemy |
-| `SECRET_KEY` | chave de desenvolvimento | Assinatura dos JWTs e chaves de rate limit |
-| `ACCESS_TOKEN_MINUTES` | `1440` | Validade do token de acesso |
-| `CORS_ORIGINS` | `http://localhost:5173` | Origens permitidas, separadas por vírgula |
-| `OPENAI_API_KEY` | vazio | Habilita chamadas ao provedor compatível com OpenAI |
-| `OPENAI_BASE_URL` | endpoint OpenAI | Endpoint compatível com `/chat/completions` |
-| `OPENAI_MODEL` | `gpt-4o-mini` | Modelo solicitado |
-| `MAX_DOCUMENT_BYTES` | `5242880` | Tamanho máximo do arquivo enviado |
-| `AUTH_RATE_LIMIT_PER_MINUTE` | `10` | Tentativas por IP em janela de minuto |
-| `PUBLIC_CHAT_RATE_LIMIT_PER_MINUTE` | `20` | Mensagens por IP em janela de minuto |
-| `PUBLIC_CHAT_DAILY_LIMIT_PER_BOT` | `500` | Mensagens por chatbot em janela de 24 horas |
-| `AI_MAX_OUTPUT_TOKENS` | `600` | Limite de tokens de saída (máximo configurável: 4000) |
+Para produção, use `APP_ENV=production`, configure uma `SECRET_KEY` aleatória e exclusiva com pelo menos 32 caracteres, defina origens explícitas em `CORS_ORIGINS` e termine TLS em um proxy/ingress confiável. Não use a chave padrão do Compose. Consulte [Segurança e privacidade](docs/SEGURANCA.md) antes de expor a aplicação.
 
-Em produção, defina `APP_ENV=production`, use uma chave aleatória exclusiva com pelo menos 32 caracteres, configure origens CORS explícitas, HTTPS, armazenamento/backups apropriados e um banco suportado para carga esperada. Não use valores de exemplo ou a chave local do Compose.
-
-Mensagens são limitadas a 4000 caracteres pelo schema da API. O campo `MAX_MESSAGE_LENGTH` ainda não está conectado a essa validação; alterá-lo não muda o limite efetivo.
-
-## Testes e qualidade
-
-Backend:
+## Testes
 
 ```bash
+# Backend
 cd backend
 pip install -r requirements.txt
 pytest -q
 ```
 
-Frontend:
+Em outro terminal, a partir da raiz do repositório:
 
 ```bash
 cd frontend
@@ -130,28 +123,34 @@ npm ci
 npm run build
 ```
 
-O workflow de CI executa os testes do backend com Python 3.12 e o build do frontend com Node 22 em pushes e pull requests.
+O CI também executa testes do backend com Python 3.12 e build do frontend com Node.js 22 em pushes e pull requests.
+
+## Limitações atuais
+
+- Busca lexical simples; sem embeddings, OCR ou banco vetorial.
+- SQLite como banco padrão; carga concorrente e operação de produção não foram validadas.
+- Sem confirmação de e-mail, recuperação de senha, cobrança ou métricas de uso completas.
+- O widget ainda não restringe domínios permitidos por chatbot.
+- Políticas de retenção, exportação e exclusão de dados ainda precisam ser definidas.
+
+Essas limitações e os próximos passos estão detalhados em [Escopo](docs/ESCOPO.md) e [Roadmap](docs/ROADMAP.md).
 
 ## Documentação
 
-- [Guia do usuário](docs/GUIA_USUARIO.md)
-- [Referência da API](docs/API.md)
-- [Arquitetura atual](docs/ARQUITETURA.md)
-- [Escopo e estado do MVP](docs/ESCOPO.md)
-- [Roadmap](docs/ROADMAP.md)
-- [Segurança e privacidade](docs/SEGURANCA.md)
-- [Como contribuir](CONTRIBUTING.md)
+| Documento | Conteúdo |
+|---|---|
+| [Guia do usuário](docs/GUIA_USUARIO.md) | Cadastro, configuração, documentos, testes e publicação |
+| [Referência da API](docs/API.md) | Endpoints, autenticação e exemplos |
+| [Arquitetura](docs/ARQUITETURA.md) | Componentes e fluxos atualmente implementados |
+| [Escopo](docs/ESCOPO.md) | Estado das funcionalidades e objetivos do MVP |
+| [Roadmap](docs/ROADMAP.md) | Evoluções planejadas |
+| [Segurança e privacidade](docs/SEGURANCA.md) | Controles, configuração e lacunas conhecidas |
+| [Contribuição](CONTRIBUTING.md) | Ambiente, validações e fluxo de pull request |
 
-## Limitações conhecidas
+## Contribuições
 
-- A recuperação de documentos é lexical, sem embeddings, ranking semântico ou banco vetorial.
-- SQLite é adequado para desenvolvimento e demonstração; não foi validado para concorrência/carga de produção.
-- O painel ainda não oferece administração de contas, cobrança, métricas reais ou gestão de retenção.
-- A criação de conta não possui confirmação de e-mail nem recuperação de senha.
-- O widget público não aplica validação de origem por chatbot; CORS da API é a configuração global atual.
-- A extração de PDF não processa OCR para documentos digitalizados.
-- Integrações de CRM, WhatsApp, agendamento e atendimento humano não estão implementadas.
+Relatos, sugestões e pull requests são bem-vindos. Para mudanças maiores, abra uma issue para discutir a proposta antes de começar. Consulte [`CONTRIBUTING.md`](CONTRIBUTING.md) para instruções.
 
 ## Licença
 
-MIT. Consulte [`LICENSE`](LICENSE).
+Distribuído sob a licença [MIT](LICENSE).
