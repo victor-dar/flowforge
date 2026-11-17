@@ -16,12 +16,13 @@ class Settings(BaseSettings):
     max_document_bytes: int = 5 * 1024 * 1024
 
     def validate_deployment(self) -> None:
-        if self.app_env.lower() == "production":
-            if len(self.secret_key) < 32 or self.secret_key == "change-this-secret-before-deploying":
-                raise RuntimeError("Configure uma SECRET_KEY forte e única antes de rodar em produção.")
-            allowed_origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
-            if not allowed_origins or any(origin == "*" for origin in allowed_origins):
-                raise RuntimeError("Configure CORS_ORIGINS explícitas em produção.")
+        if self.app_env.lower() != "production":
+            return
+        if len(self.secret_key) < 32 or self.secret_key == "change-this-secret-before-deploying":
+            raise RuntimeError("Configure uma SECRET_KEY forte e única antes de rodar em produção.")
+        origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        if not origins or "*" in origins:
+            raise RuntimeError("Configure CORS_ORIGINS explícitas em produção.")
 
 
 settings = Settings()
