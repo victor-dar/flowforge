@@ -1,22 +1,38 @@
-# Contribuindo com o FlowForge
+# Contribuindo
 
-O projeto está em fase de planejamento. Por enquanto, as contribuições mais úteis são ideias, feedback e revisão de escopo.
+Obrigado por ajudar no FlowForge. O projeto é um MVP em desenvolvimento; abra uma issue para discutir mudanças amplas antes de investir em uma implementação.
 
-## Como ajudar
+## Fluxo de contribuição
 
-- Abra uma **issue** com sugestões, dúvidas ou críticas ao escopo
-- Aponte riscos de segurança, privacidade ou custo que ainda não foram considerados
-- Sugira melhorias na documentação
+1. Faça fork e crie uma branch curta, por exemplo `feat/widget-origins` ou `fix/document-upload`.
+2. Mantenha cada mudança focada e explique a motivação no pull request.
+3. Atualize a documentação diretamente relacionada.
+4. Execute os testes e validações aplicáveis.
+5. Abra um pull request com resumo, passos de teste, capturas para mudanças visuais e observações de migração/configuração.
 
-## Fluxo quando o código começar
+## Ambiente e validações
 
-1. Faça um fork e crie uma branch: `feat/nome-curto` ou `fix/nome-curto`
-2. Faça commits pequenos e descritivos (sugestão: Conventional Commits, ex. `feat: adiciona wizard de criação`)
-3. Rode os testes (`pytest` no backend) antes de abrir o Pull Request
-4. Descreva no PR o que mudou e por quê
+Backend:
 
-## Padrões previstos
+```bash
+cd backend
+pip install -r requirements.txt
+pytest -q
+```
 
-- Backend: Python com tipagem, testes em Pytest
-- Frontend: TypeScript estrito, componentes reutilizáveis
-- Documentação em português (pt-BR)
+Frontend:
+
+```bash
+cd frontend
+npm ci
+npm run build
+```
+
+## Diretrizes
+
+- Documentação e interface voltadas ao usuário devem usar português brasileiro.
+- Backend: Python tipado, FastAPI, SQLAlchemy e Pytest.
+- Frontend: TypeScript e React; preserve os padrões existentes e prefira componentes reutilizáveis.
+- Não inclua `.env`, chaves, dados locais, banco SQLite ou credenciais em commits.
+- Mudanças de API/configuração devem atualizar os guias e exemplos.
+- Evite declarar recurso pronto antes de sua implementação e validação.

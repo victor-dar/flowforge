@@ -19,6 +19,7 @@ build/
 
 # Dados locais
 *.sqlite3
+*.db
 postgres-data/
 qdrant-storage/
 redis-data/

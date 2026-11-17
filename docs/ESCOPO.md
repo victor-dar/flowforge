@@ -1,85 +1,48 @@
-# Escopo do Projeto — FlowForge
+# Escopo e estado do produto
 
-> Documento inicial. Será aprofundado nas próximas iterações.
+## Visão
 
-## 1. Visão
+FlowForge é uma plataforma no-code em estágio de MVP para pequenos negócios configurarem assistentes de atendimento com informações próprias e publicá-los em sites.
 
-Plataforma SaaS no-code que permite a qualquer pessoa criar, configurar, personalizar e publicar um chatbot com IA, sem conhecimento técnico.
+## Público pretendido
 
-## 2. Objetivos
+Pequenos negócios e profissionais autônomos que precisam responder dúvidas frequentes. O público é uma hipótese de produto; validação com usuários e métricas ainda precisa ser feita.
 
-- Reduzir a barreira de custo e complexidade para automatizar atendimento
-- Oferecer criação guiada em poucos passos
-- Permitir que o usuário controle e altere seu próprio assistente
-- Validar o produto com uma versão gratuita antes de monetizar
+## Estado funcional
 
-## 3. Público-alvo
-
-**Principal:** pequenos negócios (clínicas, salões, restaurantes, lojas, academias, escolas, escritórios), profissionais autônomos (dentistas, psicólogos, advogados, consultores, personal trainers, designers) e empreendedores iniciantes.
-
-**Secundário:** agências de marketing, profissionais de automação, freelancers, consultorias de tecnologia.
-
-## 4. Escopo do MVP
-
-### Incluído
-
-| # | Funcionalidade | Descrição resumida |
+| Funcionalidade | Estado | Observações |
 |---|---|---|
-| 1 | Cadastro e autenticação | Conta individual, login, recuperação de senha |
-| 2 | Dashboard | Visão geral dos chatbots e do uso |
-| 3 | Gestão de chatbots | Criar, editar, ativar/desativar, excluir |
-| 4 | Configuração guiada | Wizard com perguntas simples; IA gera as instruções do bot |
-| 5 | Personalização | Nome, avatar, tom, boas-vindas, regras, cores |
-| 6 | Provedor de IA | Integração com um LLM via camada independente de provedor |
-| 7 | Base de conhecimento (RAG) | Upload de PDF/TXT e perguntas e respostas |
-| 8 | Ambiente de testes | Chat de teste dentro do painel |
-| 9 | Widget incorporável | Snippet de código para colar no site |
-| 10 | Histórico de conversas | Sessões, mensagens, data/hora, indicadores básicos |
-| 11 | Controle de uso | Limites do plano gratuito |
+| Cadastro e login | Implementado | JWT; sem confirmação de e-mail ou recuperação de senha |
+| Dashboard | Implementado | Visão de assistentes e documentos; métricas de conversas ainda não são apresentadas |
+| Criar/editar/excluir chatbot | Implementado | Escopo por usuário |
+| Configurar aparência e instruções | Implementado | Nome, empresa, descrição, instruções, boas-vindas e cor |
+| Upload da base de conhecimento | Implementado | PDF, TXT, MD e CSV; extração simples |
+| Busca de contexto | Implementação inicial | Busca lexical; não é RAG vetorial |
+| Integração LLM | Implementação inicial | Provedor compatível com API OpenAI, opcional |
+| Teste de conversa | Implementado | Interface no painel |
+| Widget externo | Implementado | Snippet JavaScript + iframe |
+| Histórico | API implementada | Até 100 conversas por chamada; visualização ainda não integrada ao painel |
+| Limites de uso | Implementado | Janelas fixas persistidas no banco; não são medição de custo |
+| Cobrança e planos | Não implementado | |
+| Recuperação de senha e administração | Não implementado | |
+| Busca semântica/RAG vetorial | Não implementado | |
 
-### Fora do MVP
+## Critérios de validação do MVP
 
-- Integração com WhatsApp
-- Integração com CRM e sistemas de agendamento
-- Webhooks e APIs externas
-- Encaminhamento para atendimento humano
-- Editor visual de fluxos
-- Gestão de equipes e múltiplos clientes (agências)
-- Cobrança e planos pagos
+- Uma pessoa consegue criar conta, configurar um assistente e testar o fluxo sem assistência.
+- O assistente usa trechos de documentos relevantes em suas respostas.
+- O widget pode ser instalado por snippet em uma página externa.
+- Dados privados de um usuário não são retornados a outro usuário.
 
-## 5. Fluxo principal do usuário
+Os critérios devem ser validados com testes e usuários reais antes de afirmar prontidão comercial.
 
-1. Cria conta → 2. Acessa o painel → 3. Cria chatbot → 4. Informa dados do negócio → 5. Configura comportamento → 6. Adiciona documentos → 7. Testa → 8. Personaliza → 9. Publica → 10. Acompanha conversas e uso
+## Fora do escopo atual
 
-## 6. Requisitos não funcionais
+WhatsApp, CRM, agendamento, webhooks, editor visual de fluxos, equipes/agências, planos pagos e handoff para agentes humanos.
 
-- **Simplicidade:** um empreendedor conclui o fluxo sem ajuda técnica
-- **Segurança:** isolamento de dados por usuário, proteção de credenciais, LGPD
-- **Desempenho:** respostas do chatbot em tempo aceitável para conversa
-- **Extensibilidade:** trocar/adicionar provedores de IA sem reestruturar a aplicação
-- **Transparência:** limites e custos visíveis ao usuário
+## Riscos e hipóteses
 
-## 7. Critérios de sucesso do MVP
-
-- Usuário novo cria e publica um chatbot funcional sem suporte
-- Chatbot responde com base nos documentos enviados
-- Widget funciona em um site externo com um único snippet
-- Dados de um usuário nunca são acessíveis por outro
-
-## 8. Riscos iniciais
-
-| Risco | Mitigação prevista |
-|---|---|
-| Custo de uso dos modelos de IA | Limites de mensagens, camada de provedores, cache |
-| Respostas incorretas ("alucinação") | RAG, ambiente de testes, instruções restritivas |
-| Abuso do widget público | Rate limit, validação de origem, limites por bot |
-| Vazamento de dados entre usuários | Isolamento por tenant, testes automatizados |
-
-## 9. Pontos em aberto (a aprofundar)
-
-- Provedor(es) de IA inicial(is) e estratégia de custos
-- Modelo de embeddings e estratégia de chunking
-- Hospedagem e infraestrutura
-- Identidade visual definitiva
-- Definição de limites e preços dos planos
-- Estratégia de validação com os primeiros usuários
+- Qualidade da busca lexical pode ser baixa em perguntas com vocabulário diferente do documento.
+- Conteúdo de usuários finais e documentos pode ser sensível; retenção, exclusão e aviso de privacidade precisam ser definidos.
+- Uma cota por mensagens não equivale a uma cota financeira de provedor.
+- O widget público necessita controles de origem e abuso adequados para publicação ampla.

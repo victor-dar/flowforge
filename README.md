@@ -1,60 +1,84 @@
-<p align="center">
-  <img src="assets/banner.svg" alt="FlowForge" width="100%">
-</p>
-
-<p align="center">
-  <img alt="Status" src="https://img.shields.io/badge/status-MVP%20funcional-blue">
-  <img alt="Licença" src="https://img.shields.io/badge/licen%C3%A7a-MIT-green">
-  <img alt="Frontend" src="https://img.shields.io/badge/frontend-React%20%2B%20TypeScript-61dafb">
-  <img alt="Backend" src="https://img.shields.io/badge/backend-FastAPI-009688">
-</p>
-
 # FlowForge
 
-> **Sua ideia. Sua inteligência. Sua automação.**
+**Crie, configure e publique assistentes de atendimento para o seu negócio.**
 
-FlowForge é um MVP para criar chatbots com base de conhecimento, testar respostas e publicar um widget em sites. O repositório contém uma interface React, uma API FastAPI e persistência SQLAlchemy.
+FlowForge é um MVP open source de uma plataforma para criar chatbots com uma base de conhecimento e publicá-los em sites por meio de um widget incorporável. O repositório reúne um painel web em React/TypeScript e uma API em FastAPI.
 
-## Funcionalidades implementadas
+> **Estado do produto:** MVP funcional em desenvolvimento. A aplicação já permite criar conta, gerenciar assistentes, carregar documentos, testar o chat e incorporar o widget. Ainda não é um SaaS pronto para produção: a busca de conhecimento é lexical, o banco padrão é SQLite e faltam recursos de operação, privacidade e administração.
 
-- Cadastro e login com senha armazenada usando PBKDF2-HMAC-SHA256 e tokens JWT Bearer com expiração.
-- Isolamento de chatbots por usuário e gerenciamento dos próprios bots.
-- Upload e exclusão de documentos PDF, TXT, MD e CSV; extração e recuperação lexical simples de trechos.
-- Chat público com histórico de conversas e widget incorporável.
-- Integração opcional com a API de chat da OpenAI, com limite configurável de tokens de saída e erros do provedor reportados como indisponibilidade. Sem chave configurada, a API responde usando o conteúdo recuperado da base.
-- Proteção contra abuso com limites de autenticação por IP, limite de chat por IP e cota diária por chatbot, persistidos no banco.
-- SQLite como banco padrão local e no Docker Compose.
+## Visão rápida
 
-Este é um MVP, não um serviço SaaS pronto para produção: a recuperação de documentos é lexical (não usa embeddings/vetores), e ainda faltam administração de contas e medição de gastos monetários por provedor. A cota diária limita quantidade de mensagens, não um valor específico em moeda.
+| Área | Implementação atual |
+|---|---|
+| Painel | React, TypeScript e Vite |
+| API | Python, FastAPI, Pydantic e SQLAlchemy |
+| Persistência padrão | SQLite |
+| Autenticação | Senhas com PBKDF2-HMAC-SHA256 e JWT Bearer |
+| Conhecimento | Extração de PDF/TXT/MD/CSV e busca lexical simples |
+| Provedor de IA | API compatível com OpenAI, opcional |
+| Widget | JavaScript que incorpora um iframe hospedado pela API |
+| Testes | Pytest para API e build/type-check do frontend |
 
-## Rodar localmente
+![Tela de acesso](assets/screenshots/login.png)
 
-Requisitos: Python 3.12+, Node.js 22+ e npm.
+![Visão geral do painel em estado vazio](assets/screenshots/dashboard.png)
 
-1. Configure e execute a API:
+*Capturas reais do frontend local; a visão geral mostra o estado vazio, sem dados de usuário.*
 
-   ```bash
-   cd backend
-   python -m venv .venv
-   source .venv/bin/activate  # Windows: .venv\Scripts\activate
-   pip install -r requirements.txt
-   cp .env.example .env
-   uvicorn app.main:app --reload
-   ```
+## O que já é possível fazer
 
-   A API fica em `http://localhost:8000`; verificação de saúde: `/health`, documentação interativa: `/docs`.
+- Criar uma conta e entrar no painel.
+- Criar, editar e excluir assistentes.
+- Personalizar instruções, mensagem inicial e cor.
+- Carregar documentos PDF, TXT, Markdown e CSV (limite padrão de 5 MB por arquivo).
+- Testar conversas pelo painel e consultar o histórico pela API.
+- Publicar o chat em outro site com um snippet JavaScript.
+- Usar limites de requisições para autenticação e chat público.
+- Executar sem chave de IA: nesse modo, o chat retorna trechos recuperados dos documentos ou uma resposta informando que não há contexto.
 
-2. Em outro terminal, execute a interface:
+## Capturas
 
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
+As imagens em [`assets/screenshots/`](assets/screenshots/) mostram a interface da versão atual. Podem ser atualizadas quando o painel mudar.
 
-   A interface fica em `http://localhost:5173`. Configure `VITE_API_URL` se a API estiver em outro endereço.
+## Começar localmente
 
-## Docker Compose
+### Requisitos
+
+- Python 3.11 ou superior
+- Node.js 22 e npm
+
+### API
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn app.main:app --reload
+```
+
+API: <http://localhost:8000>
+
+Saúde: <http://localhost:8000/health>
+
+Documentação interativa: <http://localhost:8000/docs>
+
+### Painel
+
+Em outro terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Painel: <http://localhost:5173>
+
+O painel usa `http://localhost:8000` por padrão. Para outra URL, configure `VITE_API_URL` antes de iniciar/buildar o frontend.
+
+### Docker Compose
 
 Na raiz do repositório:
 
@@ -62,27 +86,35 @@ Na raiz do repositório:
 docker compose up --build
 ```
 
-O Compose inicia API e frontend nas portas 8000 e 5173 e persiste os dados SQLite no volume `flowforge_data`. Para substituir os valores locais, defina `SECRET_KEY`, `OPENAI_API_KEY` e `OPENAI_MODEL` no ambiente ou em um arquivo `.env` na raiz. O valor local de `SECRET_KEY` do Compose não deve ser usado em produção.
+O Compose publica o painel na porta 5173 e a API na 8000, e armazena o SQLite no volume `flowforge_data`. As imagens atuais precisam das dependências listadas nos Dockerfiles. Para configurar provedores ou ambiente, defina as variáveis descritas em [`backend/.env.example`](backend/.env.example) e no `docker-compose.yml`.
 
-## Configuração e produção
+## Configuração
 
-`backend/.env.example` documenta as variáveis da API. Para desenvolvimento, `DATABASE_URL` usa `sqlite:///./flowforge.db`; `CORS_ORIGINS` aceita uma lista de origens separadas por vírgula. A configuração padrão local não exige chave OpenAI.
+As configurações da API são lidas de variáveis de ambiente e do arquivo `backend/.env`:
 
-Em produção:
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `APP_ENV` | `development` | Defina `production` para ativar validações de inicialização |
+| `DATABASE_URL` | `sqlite:///./flowforge.db` | URL SQLAlchemy |
+| `SECRET_KEY` | chave de desenvolvimento | Assinatura dos JWTs e chaves de rate limit |
+| `ACCESS_TOKEN_MINUTES` | `1440` | Validade do token de acesso |
+| `CORS_ORIGINS` | `http://localhost:5173` | Origens permitidas, separadas por vírgula |
+| `OPENAI_API_KEY` | vazio | Habilita chamadas ao provedor compatível com OpenAI |
+| `OPENAI_BASE_URL` | endpoint OpenAI | Endpoint compatível com `/chat/completions` |
+| `OPENAI_MODEL` | `gpt-4o-mini` | Modelo solicitado |
+| `MAX_DOCUMENT_BYTES` | `5242880` | Tamanho máximo do arquivo enviado |
+| `AUTH_RATE_LIMIT_PER_MINUTE` | `10` | Tentativas por IP em janela de minuto |
+| `PUBLIC_CHAT_RATE_LIMIT_PER_MINUTE` | `20` | Mensagens por IP em janela de minuto |
+| `PUBLIC_CHAT_DAILY_LIMIT_PER_BOT` | `500` | Mensagens por chatbot em janela de 24 horas |
+| `AI_MAX_OUTPUT_TOKENS` | `600` | Limite de tokens de saída (máximo configurável: 4000) |
 
-- Defina `APP_ENV=production`.
-- Configure `SECRET_KEY` com pelo menos 32 caracteres, aleatória e exclusiva; a API rejeita a chave padrão e o valor de exemplo.
-- Configure `CORS_ORIGINS` somente com origens explícitas; origem wildcard é rejeitada.
-- Ajuste os limites `AUTH_RATE_LIMIT_PER_MINUTE`, `PUBLIC_CHAT_RATE_LIMIT_PER_MINUTE`, `PUBLIC_CHAT_DAILY_LIMIT_PER_BOT` e `AI_MAX_OUTPUT_TOKENS` conforme o uso e o orçamento esperados. Os limites de requisição são compartilhados por processos que usam o mesmo banco.
-- Se a API estiver atrás de um proxy, configure o Uvicorn para confiar somente nos endereços dos proxies conhecidos; os limites por IP usam o endereço do cliente visto pela API.
-- Use armazenamento e backups adequados ao ambiente. SQLite atende ao desenvolvimento/MVP; avalie um banco gerenciado para produção.
-- Armazene chaves em um gerenciador de segredos e configure HTTPS no proxy/ingress.
+Em produção, defina `APP_ENV=production`, use uma chave aleatória exclusiva com pelo menos 32 caracteres, configure origens CORS explícitas, HTTPS, armazenamento/backups apropriados e um banco suportado para carga esperada. Não use valores de exemplo ou a chave local do Compose.
 
-A API valida a configuração de produção durante a inicialização. Não publique o arquivo `.env` nem credenciais.
+Mensagens são limitadas a 4000 caracteres pelo schema da API. O campo `MAX_MESSAGE_LENGTH` ainda não está conectado a essa validação; alterá-lo não muda o limite efetivo.
 
-## Testes e CI
+## Testes e qualidade
 
-Os testes do backend usam SQLite isolado em memória:
+Backend:
 
 ```bash
 cd backend
@@ -90,18 +122,36 @@ pip install -r requirements.txt
 pytest -q
 ```
 
-O workflow [CI](.github/workflows/ci.yml) executa os testes do backend com Python 3.12 e o build do frontend com Node 22 em pushes e pull requests.
+Frontend:
 
-Os limites são aplicados em janelas fixas: 10 tentativas de autenticação por IP/minuto, 20 mensagens de chat por IP/minuto e 500 mensagens por chatbot/dia por padrão. O contador de chat inclui tentativas que falham no provedor de IA; ajuste os valores no ambiente. O máximo de saída OpenAI padrão é 600 tokens.
+```bash
+cd frontend
+npm ci
+npm run build
+```
+
+O workflow de CI executa os testes do backend com Python 3.12 e o build do frontend com Node 22 em pushes e pull requests.
 
 ## Documentação
 
-- [Arquitetura](docs/ARQUITETURA.md)
-- [Escopo](docs/ESCOPO.md)
+- [Guia do usuário](docs/GUIA_USUARIO.md)
+- [Referência da API](docs/API.md)
+- [Arquitetura atual](docs/ARQUITETURA.md)
+- [Escopo e estado do MVP](docs/ESCOPO.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Segurança e privacidade](docs/SEGURANCA.md)
-- OpenAPI local: `http://localhost:8000/docs`
+- [Como contribuir](CONTRIBUTING.md)
+
+## Limitações conhecidas
+
+- A recuperação de documentos é lexical, sem embeddings, ranking semântico ou banco vetorial.
+- SQLite é adequado para desenvolvimento e demonstração; não foi validado para concorrência/carga de produção.
+- O painel ainda não oferece administração de contas, cobrança, métricas reais ou gestão de retenção.
+- A criação de conta não possui confirmação de e-mail nem recuperação de senha.
+- O widget público não aplica validação de origem por chatbot; CORS da API é a configuração global atual.
+- A extração de PDF não processa OCR para documentos digitalizados.
+- Integrações de CRM, WhatsApp, agendamento e atendimento humano não estão implementadas.
 
 ## Licença
 
-Distribuído sob a licença MIT. Consulte [LICENSE](LICENSE).
+MIT. Consulte [`LICENSE`](LICENSE).
