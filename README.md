@@ -3,161 +3,100 @@
 </p>
 
 <p align="center">
-  <img alt="Status" src="https://img.shields.io/badge/status-em%20planejamento-blue">
+  <img alt="Status" src="https://img.shields.io/badge/status-MVP%20funcional-blue">
   <img alt="Licença" src="https://img.shields.io/badge/licen%C3%A7a-MIT-green">
   <img alt="Frontend" src="https://img.shields.io/badge/frontend-React%20%2B%20TypeScript-61dafb">
   <img alt="Backend" src="https://img.shields.io/badge/backend-FastAPI-009688">
-  <img alt="Banco" src="https://img.shields.io/badge/db-PostgreSQL%20%2B%20Qdrant-336791">
 </p>
 
 # FlowForge
 
 > **Sua ideia. Sua inteligência. Sua automação.**
 
-**FlowForge** é uma plataforma SaaS **no-code** para criar, personalizar e publicar chatbots com inteligência artificial — sem escrever uma linha de código.
+FlowForge é um MVP para criar chatbots com base de conhecimento, testar respostas e publicar um widget em sites. O repositório contém uma interface React, uma API FastAPI e persistência SQLAlchemy.
 
-A ideia central: **qualquer pessoa deve conseguir criar seu próprio chatbot sem precisar contratar alguém para isso.**
+## Funcionalidades implementadas
 
-> 🚧 **Projeto em fase de planejamento.** Este repositório contém o escopo inicial, a arquitetura prevista e o roadmap. As imagens abaixo são **mockups conceituais** e não representam a interface final.
+- Cadastro e login com senha armazenada usando PBKDF2-HMAC-SHA256 e tokens JWT Bearer com expiração.
+- Isolamento de chatbots por usuário e gerenciamento dos próprios bots.
+- Upload e exclusão de documentos PDF, TXT, MD e CSV; extração e recuperação lexical simples de trechos.
+- Chat público com histórico de conversas e widget incorporável.
+- Integração opcional com a API de chat da OpenAI. Sem chave configurada, a API responde usando o conteúdo recuperado da base.
+- SQLite como banco padrão local e no Docker Compose.
 
----
+Este é um MVP, não um serviço SaaS pronto para produção: a recuperação de documentos é lexical (não usa embeddings/vetores), e ainda faltam controles como rate limiting, cotas e administração de contas.
 
-## 📌 Índice
+## Rodar localmente
 
-- [O problema](#-o-problema)
-- [A solução](#-a-solução)
-- [Como vai funcionar](#-como-vai-funcionar)
-- [Prévia do sistema](#-prévia-do-sistema-mockups)
-- [Funcionalidades do MVP](#-funcionalidades-do-mvp)
-- [Arquitetura e stack](#-arquitetura-e-stack)
-- [Roadmap](#-roadmap)
-- [Modelo de negócio](#-modelo-de-negócio)
-- [Segurança e privacidade](#-segurança-e-privacidade)
-- [Documentação](#-documentação)
-- [Como contribuir](#-como-contribuir)
+Requisitos: Python 3.12+, Node.js 22+ e npm.
 
----
+1. Configure e execute a API:
 
-## 🎯 O problema
+   ```bash
+   cd backend
+   python -m venv .venv
+   source .venv/bin/activate  # Windows: .venv\Scripts\activate
+   pip install -r requirements.txt
+   cp .env.example .env
+   uvicorn app.main:app --reload
+   ```
 
-Pequenos negócios e profissionais autônomos querem automatizar o atendimento, mas esbarram em:
+   A API fica em `http://localhost:8000`; verificação de saúde: `/health`, documentação interativa: `/docs`.
 
-- Alto custo de contratar desenvolvedores ou especialistas em automação
-- Ferramentas complexas (APIs, webhooks, integrações)
-- Dificuldade para configurar modelos de IA
-- Dependência de terceiros para qualquer alteração simples
-- Falta de atendimento fora do horário comercial
+2. Em outro terminal, execute a interface:
 
-## 💡 A solução
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
 
-Um processo **guiado e simples**: o usuário descreve o negócio, envia documentos, testa o assistente e publica em um site com um trecho de código. A plataforma cuida da parte técnica.
+   A interface fica em `http://localhost:5173`. Configure `VITE_API_URL` se a API estiver em outro endereço.
 
-**Para quem é:** clínicas, salões, restaurantes, lojas, academias, escolas, dentistas, psicólogos, advogados, consultores, personal trainers, designers e empreendedores em geral. Como público secundário: agências, freelancers e consultorias de tecnologia.
+## Docker Compose
 
-## 🧭 Como vai funcionar
+Na raiz do repositório:
 
-1. Criar conta e acessar o painel
-2. Clicar em **Criar chatbot**
-3. Informar os dados do negócio
-4. Configurar personalidade e regras de atendimento
-5. Adicionar documentos e informações (base de conhecimento)
-6. Testar o chatbot no próprio painel
-7. Personalizar a aparência
-8. Publicar com um snippet de código
-9. Acompanhar conversas e uso
+```bash
+docker compose up --build
+```
 
-## 🖼️ Prévia do sistema (mockups)
+O Compose inicia API e frontend nas portas 8000 e 5173 e persiste os dados SQLite no volume `flowforge_data`. Para substituir os valores locais, defina `SECRET_KEY`, `OPENAI_API_KEY` e `OPENAI_MODEL` no ambiente ou em um arquivo `.env` na raiz. O valor local de `SECRET_KEY` do Compose não deve ser usado em produção.
 
-### Dashboard
-![Dashboard](assets/mockup-dashboard.svg)
+## Configuração e produção
 
-### Criação guiada (wizard)
-![Wizard](assets/mockup-wizard.svg)
+`backend/.env.example` documenta as variáveis da API. Para desenvolvimento, `DATABASE_URL` usa `sqlite:///./flowforge.db`; `CORS_ORIGINS` aceita uma lista de origens separadas por vírgula. A configuração padrão local não exige chave OpenAI.
 
-### Ambiente de testes
-![Ambiente de testes](assets/mockup-chat-test.svg)
+Em produção:
 
-### Widget incorporado em um site
-![Widget](assets/mockup-widget.svg)
+- Defina `APP_ENV=production`.
+- Configure `SECRET_KEY` com pelo menos 32 caracteres, aleatória e exclusiva; a API rejeita a chave padrão e o valor de exemplo.
+- Configure `CORS_ORIGINS` somente com origens explícitas; origem wildcard é rejeitada.
+- Use armazenamento e backups adequados ao ambiente. SQLite atende ao desenvolvimento/MVP; avalie um banco gerenciado para produção.
+- Armazene chaves em um gerenciador de segredos e configure HTTPS no proxy/ingress.
 
-## ✅ Funcionalidades do MVP
+A API valida a configuração de produção durante a inicialização. Não publique o arquivo `.env` nem credenciais.
 
-- [ ] Cadastro e autenticação
-- [ ] Dashboard
-- [ ] Criação e gerenciamento de chatbots
-- [ ] Assistente de configuração guiada
-- [ ] Personalização de comportamento e aparência
-- [ ] Integração com provedor de IA (camada independente de provedor)
-- [ ] Base de conhecimento com **RAG** (PDF, texto, perguntas e respostas)
-- [ ] Ambiente de testes
-- [ ] Widget incorporável em sites
-- [ ] Histórico de conversas
-- [ ] Controle básico de utilização
+## Testes e CI
 
-**Fora do MVP (versões futuras):** WhatsApp, CRM, agendamento, webhooks, handoff para humano, editor visual de fluxos, recursos para agências.
+Os testes do backend usam SQLite isolado em memória:
 
-## 🏗️ Arquitetura e stack
+```bash
+cd backend
+pip install -r requirements.txt
+pytest -q
+```
 
-![Arquitetura](assets/architecture.svg)
+O workflow [CI](.github/workflows/ci.yml) executa os testes do backend com Python 3.12 e o build do frontend com Node 22 em pushes e pull requests.
 
-| Tecnologia | Responsabilidade |
-|---|---|
-| React + TypeScript + Vite | Interface do usuário |
-| Tailwind CSS | Estilização |
-| Python + FastAPI | APIs do backend |
-| PostgreSQL + SQLAlchemy | Banco relacional e ORM |
-| Qdrant | Banco vetorial (RAG) |
-| Redis | Cache e filas |
-| Docker | Containerização |
-| Pytest | Testes automatizados |
+## Documentação
 
-Detalhes em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
-
-## 🗺️ Roadmap
-
-| Fase | Foco |
-|---|---|
-| 1 — Fundação | Estrutura, backend/frontend, banco, autenticação, dashboard |
-| 2 — Criação de chatbots | Wizard, configurações, personalização, gerenciamento |
-| 3 — Inteligência artificial | LLM, base de conhecimento, RAG, ambiente de testes |
-| 4 — Publicação | Widget, integração com sites, histórico de conversas |
-| 5 — SaaS | Controle de uso, limites do plano gratuito, métricas, administração |
-| 6 — Expansão | WhatsApp, editor visual, integrações, agências, planos comerciais |
-
-Detalhes em [`docs/ROADMAP.md`](docs/ROADMAP.md).
-
-## 💰 Modelo de negócio
-
-Começa **gratuito** para validar a experiência e conquistar os primeiros usuários. Depois, assinaturas:
-
-| Plano | Para quem |
-|---|---|
-| Gratuito | 1 chatbot, personalização básica, base limitada, mensagens limitadas |
-| Starter | Pequenos negócios com uso regular |
-| Pro | Empresas que dependem do atendimento automatizado |
-| Business | Equipes, agências e necessidades complexas |
-
-Limites e preços serão definidos considerando custos de infraestrutura e de uso dos modelos de IA.
-
-## 🔒 Segurança e privacidade
-
-Isolamento de dados por usuário, autenticação segura, proteção de chaves de API, validação de arquivos enviados, limites e proteção contra abuso, políticas de retenção/exclusão e adequação à **LGPD**. Mais em [`docs/SEGURANCA.md`](docs/SEGURANCA.md).
-
-## 📚 Documentação
-
-- [Escopo do projeto](docs/ESCOPO.md)
 - [Arquitetura](docs/ARQUITETURA.md)
+- [Escopo](docs/ESCOPO.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Segurança e privacidade](docs/SEGURANCA.md)
+- OpenAPI local: `http://localhost:8000/docs`
 
-## 🤝 Como contribuir
+## Licença
 
-O projeto ainda está em fase inicial. Veja [`CONTRIBUTING.md`](CONTRIBUTING.md) para sugestões e fluxo de trabalho.
-
-## 📄 Licença
-
-Distribuído sob a licença MIT. Veja [`LICENSE`](LICENSE).
-
----
-
-<p align="center"><b>Missão:</b> democratizar o acesso à inteligência artificial e permitir que qualquer pessoa tenha autonomia para criar seu próprio assistente virtual.</p>
+Distribuído sob a licença MIT. Consulte [LICENSE](LICENSE).

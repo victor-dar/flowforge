@@ -2,8 +2,9 @@ services:
   api:
     build: ./backend
     environment:
+      APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: sqlite:////data/flowforge.db
-      SECRET_KEY: ${SECRET_KEY:-local-development-only-change-me}
+      SECRET_KEY: ${SECRET_KEY:-change-this-secret-before-deploying}
       CORS_ORIGINS: http://localhost:5173
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}

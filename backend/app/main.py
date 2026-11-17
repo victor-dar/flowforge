@@ -1,27 +1,31 @@
 from contextlib import asynccontextmanager
 from io import BytesIO
+from pathlib import Path
 import re
 
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, Response
 from pypdf import PdfReader
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.ai import generate_answer, relevant_context
 from app.auth import create_token, get_current_user, get_db, hash_password, verify_password
 from app.config import settings
 from app.models import Base, Chatbot, Conversation, KnowledgeDocument, Message, SessionLocal, User, engine
 from app.schemas import BotCreate, BotOut, BotUpdate, ChatOut, ChatRequest, Credentials, TokenOut, UserOut
-from app.ai import generate_answer, relevant_context
+from app.widget_page import WIDGET_HTML
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    settings.validate_deployment()
     Base.metadata.create_all(bind=engine)
     yield
 
 
-app = FastAPI(title="FlowForge API", version="0.1.0", description="API para criar e publicar assistentes FlowForge", lifespan=lifespan)
+app = FastAPI(title="FlowForge API", version="0.2.0", description="API para criar e publicar assistentes FlowForge", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=[origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 
@@ -39,6 +43,19 @@ def owned_bot(bot_id: int, owner_id: int, db: Session) -> Chatbot:
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/widget.js")
+def widget_script():
+    return Response(
+        content=(Path(__file__).parent / "widget.js").read_text(encoding="utf-8"),
+        media_type="application/javascript",
+    )
+
+
+@app.get("/widget", response_class=HTMLResponse)
+def widget_page():
+    return WIDGET_HTML
 
 
 @app.post("/api/auth/register", response_model=TokenOut, status_code=201)
@@ -84,6 +101,17 @@ def create_bot(data: BotCreate, user: User = Depends(get_current_user), db: Sess
 @app.get("/api/bots/{bot_id}", response_model=BotOut)
 def get_bot(bot_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return bot_output(owned_bot(bot_id, user.id, db))
+
+
+@app.get("/api/bots/{bot_id}/documents")
+def list_documents(bot_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    owned_bot(bot_id, user.id, db)
+    documents = db.scalars(
+        select(KnowledgeDocument)
+        .where(KnowledgeDocument.bot_id == bot_id)
+        .order_by(KnowledgeDocument.id)
+    ).all()
+    return [{"id": document.id, "name": document.name} for document in documents]
 
 
 @app.patch("/api/bots/{bot_id}", response_model=BotOut)
@@ -144,6 +172,19 @@ def list_conversations(bot_id: int, user: User = Depends(get_current_user), db: 
     owned_bot(bot_id, user.id, db)
     conversations = db.scalars(select(Conversation).options(selectinload(Conversation.messages)).where(Conversation.bot_id == bot_id).order_by(Conversation.id.desc()).limit(100)).all()
     return [{"id": item.id, "visitor_id": item.visitor_id, "created_at": item.created_at.isoformat() if item.created_at else "", "messages": [{"role": message.role, "content": message.content, "created_at": message.created_at.isoformat() if message.created_at else ""} for message in item.messages]} for item in conversations]
+
+
+@app.get("/api/public/bots/{bot_id}")
+def get_public_bot(bot_id: int, db: Session = Depends(get_db)):
+    bot = db.get(Chatbot, bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Chatbot não encontrado")
+    return {
+        "id": bot.id,
+        "name": bot.name,
+        "welcome_message": bot.welcome_message,
+        "color": bot.color,
+    }
 
 
 @app.post("/api/public/bots/{bot_id}/chat", response_model=ChatOut)

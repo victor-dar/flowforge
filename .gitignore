@@ -9,6 +9,8 @@ venv/
 dist/
 build/
 .vite/
+*.tsbuildinfo
+*.egg-info/
 
 # Ambiente e segredos
 .env

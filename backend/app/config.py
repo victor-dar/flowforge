@@ -18,10 +18,17 @@ class Settings(BaseSettings):
     def validate_deployment(self) -> None:
         if self.app_env.lower() != "production":
             return
-        if len(self.secret_key) < 32 or self.secret_key == "change-this-secret-before-deploying":
+        if (
+            len(self.secret_key) < 32
+            or self.secret_key
+            in {
+                "change-this-secret-before-deploying",
+                "troque-por-uma-chave-secreta-longa-e-unica",
+            }
+        ):
             raise RuntimeError("Configure uma SECRET_KEY forte e única antes de rodar em produção.")
         origins = [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
-        if not origins or "*" in origins:
+        if not origins or any("*" in origin for origin in origins):
             raise RuntimeError("Configure CORS_ORIGINS explícitas em produção.")
 
 

@@ -1,3 +1,4 @@
+import base64
 import binascii
 import hashlib
 import hmac
@@ -32,9 +33,15 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, stored: str) -> bool:
     try:
         salt_text, digest_text = stored.split("$", 1)
-        salt = binascii.unhexlify(salt_text)
-        expected = binascii.unhexlify(digest_text)
+        if len(salt_text) == 32 and len(digest_text) == 64:
+            salt = binascii.unhexlify(salt_text)
+            expected = binascii.unhexlify(digest_text)
+        else:
+            salt = base64.b64decode(salt_text, altchars=b"-_", validate=True)
+            expected = base64.b64decode(digest_text, altchars=b"-_", validate=True)
     except (ValueError, TypeError, binascii.Error):
+        return False
+    if not salt or len(expected) != hashlib.sha256().digest_size:
         return False
     candidate = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 310_000)
     return hmac.compare_digest(candidate, expected)
@@ -63,7 +70,12 @@ def get_current_user(
     if not credentials:
         raise unauthorized
     try:
-        claims = jwt.decode(credentials.credentials, settings.secret_key, algorithms=["HS256"])
+        claims = jwt.decode(
+            credentials.credentials,
+            settings.secret_key,
+            algorithms=["HS256"],
+            options={"require": ["exp", "sub"]},
+        )
         user = db.get(User, int(claims["sub"]))
     except (jwt.PyJWTError, TypeError, ValueError, KeyError):
         raise unauthorized from None
