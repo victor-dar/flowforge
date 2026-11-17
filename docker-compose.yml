@@ -1,0 +1,23 @@
+services:
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: sqlite:////data/flowforge.db
+      SECRET_KEY: ${SECRET_KEY:-local-development-only-change-me}
+      CORS_ORIGINS: http://localhost:5173
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+    volumes:
+      - flowforge_data:/data
+    ports:
+      - "8000:8000"
+  web:
+    build: ./frontend
+    environment:
+      VITE_API_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+volumes:
+  flowforge_data:
