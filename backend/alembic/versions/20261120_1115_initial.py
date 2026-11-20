@@ -5,6 +5,7 @@ Revises:
 """
 
 from alembic import op
+import sqlalchemy as sa
 
 from app.models import Base
 
@@ -18,6 +19,16 @@ depends_on = None
 def upgrade() -> None:
     bind = op.get_bind()
     Base.metadata.create_all(bind=bind)
+    inspector = sa.inspect(bind)
+    chatbot_columns = {
+        column["name"]
+        for column in inspector.get_columns("chatbots")
+    }
+    if "allowed_domains" not in chatbot_columns:
+        op.add_column(
+            "chatbots",
+            sa.Column("allowed_domains", sa.Text(), nullable=False, server_default=""),
+        )
 
 
 def downgrade() -> None:

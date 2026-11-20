@@ -3,9 +3,10 @@ const botId = script?.getAttribute('data-bot-id');
 if (!botId) console.error('[FlowForge] Informe data-bot-id no script do widget.');
 else {
   const api = new URL(script.src).origin;
+  const parentDomain = window.location.origin;
   const frame = document.createElement('iframe');
   frame.title = 'Converse com nosso assistente';
-  frame.src = `${api}/widget?bot_id=${encodeURIComponent(botId)}`;
+  frame.src = `${api}/widget?bot_id=${encodeURIComponent(botId)}&domain=${encodeURIComponent(parentDomain)}`;
   frame.style.cssText = 'position:fixed;right:20px;bottom:88px;width:360px;height:520px;max-height:calc(100vh - 110px);border:0;border-radius:16px;box-shadow:0 12px 45px #15132b30;z-index:2147483646;display:none;background:white';
   const button = document.createElement('button');
   button.type = 'button'; button.title = 'Abrir atendimento'; button.setAttribute('aria-label', 'Abrir atendimento');

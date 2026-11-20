@@ -43,6 +43,7 @@ Sem `OPENAI_API_KEY`, o chat retorna trechos encontrados ou informa que não há
 2. Substitua o host da API pela URL HTTPS pública do seu ambiente, caso necessário.
 3. Adicione o script ao HTML do site.
 4. Teste o widget em uma página de homologação antes de publicar amplamente.
+5. Em **Configuração**, informe os domínios autorizados, como `https://seudominio.com`.
 
 O modo atual não restringe o widget a domínios específicos por chatbot. Considere isso antes de compartilhar o snippet em produção.
 

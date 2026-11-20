@@ -25,6 +25,7 @@ class BotCreate(BaseModel):
     instructions: str = Field(default="Seja útil, claro e cordial.", max_length=4000)
     welcome_message: str = Field(default="Olá! Como posso ajudar?", max_length=500)
     color: str = Field(default="#6d5dfc", pattern=r"^#[0-9a-fA-F]{6}$")
+    allowed_domains: list[str] = Field(default_factory=list, max_length=20)
 
 
 class BotUpdate(BaseModel):
@@ -34,6 +35,7 @@ class BotUpdate(BaseModel):
     instructions: str | None = Field(default=None, max_length=4000)
     welcome_message: str | None = Field(default=None, max_length=500)
     color: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+    allowed_domains: list[str] | None = None
 
 
 class ChatRequest(BaseModel):
@@ -56,6 +58,7 @@ class BotOut(BaseModel):
     instructions: str
     welcome_message: str
     color: str
+    allowed_domains: list[str] = Field(default_factory=list)
     created_at: str
     document_count: int = 0
 

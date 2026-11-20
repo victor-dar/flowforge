@@ -8,6 +8,11 @@ O roadmap separa o que já existe no código do trabalho recomendado. Prioridade
 - [x] Upload de conhecimento e teste de chat
 - [x] Widget incorporável
 - [x] Testes automatizados iniciais e CI
+- [x] Histórico limitado enviado ao modelo
+- [x] Chunking e embeddings persistidos por documento
+- [x] Domínio permitido por chatbot
+- [x] Migrações de banco com Alembic
+- [x] Observabilidade inicial com logs JSON e métricas
 - [ ] Completar visualização e gerenciamento de documentos no painel
 - [ ] Adicionar fluxo guiado de configuração e checklist de publicação
 - [ ] Exibir erros, limites e estado do serviço com feedback consistente
@@ -16,18 +21,17 @@ O roadmap separa o que já existe no código do trabalho recomendado. Prioridade
 ## P1 — Confiabilidade e segurança operacional
 
 - [ ] Definir política de retenção, exportação e exclusão de dados
-- [ ] Validação de origem/domínio do widget por chatbot
+- [ ] Migrar autenticação persistente para cookies HttpOnly/Secure/SameSite
 - [ ] Recuperação de senha e verificação de e-mail
-- [ ] Migrações de banco de dados versionadas
-- [ ] Observabilidade: logs estruturados, métricas e alertas
+- [ ] Migrações PostgreSQL validadas em staging
+- [ ] Alertas, rastreamento distribuído e SLOs
 - [ ] Testes de concorrência e de integração em ambiente implantado
 - [ ] Rever segurança de upload e limites de recursos com threat model
 
 ## P2 — Qualidade de respostas e escala
 
-- [ ] Avaliar busca lexical com conjunto de perguntas real
-- [ ] Implementar chunking e recuperação semântica com índices adequados
-- [ ] Adicionar histórico ao contexto da conversa de forma controlada
+- [ ] Expandir avaliação automática da busca lexical e semântica
+- [ ] Migrar embeddings para banco vetorial adequado
 - [ ] Abstrair provedores e registrar consumo/tokens
 - [ ] Avaliar PostgreSQL para persistência de produção
 - [ ] Processamento assíncrono para documentos grandes, se a demanda justificar

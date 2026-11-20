@@ -33,6 +33,8 @@ FlowForge é um projeto open source em estágio de MVP para configurar chatbots 
 - Upload de documentos PDF, TXT, MD e CSV, com limites configuráveis de tamanho e caracteres.
 - Persistência de documentos, conversas e mensagens por assistente.
 - Busca híbrida: recuperação lexical local e embeddings opcionais da OpenAI.
+- Chunking persistente e histórico limitado nas conversas enviadas ao modelo.
+- Domínios autorizados configuráveis por assistente para o widget público.
 - Respostas diferentes para saudações e perguntas sem contexto no modo sem provedor de IA.
 - Teste de conversa no painel e histórico acessível pela API.
 - Widget incorporável em sites por meio de um snippet JavaScript.
@@ -205,12 +207,13 @@ Esse endpoint não substitui métricas, rastreamento distribuído ou monitoramen
 ## Limitações atuais
 
 - Embeddings opcionais dependem de um provedor externo; não há OCR ou banco vetorial persistente.
+- O painel mantém compatibilidade com Bearer e `localStorage`; em produção também recebe cookie `HttpOnly` com `Secure` e `SameSite=Lax`. A remoção completa do token local ainda requer migrar todas as chamadas e adicionar proteção CSRF.
+- O widget pode restringir origens por assistente, mas a lista não substitui HTTPS e controles de segurança adicionais.
 - Sem fila/worker para processar documentos grandes.
 - SQLite como banco padrão; carga concorrente e operação de produção não foram validadas.
 - Sem confirmação de e-mail, recuperação de senha, cobrança ou métricas de uso completas.
-- O widget ainda não restringe domínios permitidos por chatbot.
 - Políticas de retenção, exportação e exclusão de dados ainda precisam ser definidas.
-- A recuperação não envia automaticamente todo o histórico anterior ao modelo.
+- O modelo recebe até seis mensagens anteriores da conversa, com limite de 1.000 caracteres por mensagem.
 
 Essas limitações e os próximos passos estão detalhados em [Escopo](docs/ESCOPO.md) e [Roadmap](docs/ROADMAP.md).
 

@@ -11,7 +11,7 @@ flowchart LR
   Widget -->|iframe| API
   API --> DB[(SQLite padrão / SQLAlchemy)]
   API -->|opcional| LLM[API compatível com OpenAI]
-  API -->|extração + busca lexical| Docs[Documentos do chatbot]
+  API -->|chunking + busca lexical/semântica| Docs[Documentos do chatbot]
 ```
 
 ![Diagrama da arquitetura](../assets/architecture.svg)
@@ -23,7 +23,9 @@ flowchart LR
 | Painel | `frontend/src/` | Autenticação, gerenciamento de assistentes, configuração, upload, teste e snippet do widget |
 | API | `backend/app/main.py` | Rotas HTTP, autenticação/autorização, persistência, upload e chat |
 | Modelos | `backend/app/models.py` | Usuários, chatbots, documentos, conversas, mensagens e buckets de rate limit |
-| Provedor de IA e busca | `backend/app/ai.py` | Recuperação lexical e chamada opcional ao endpoint compatível com OpenAI |
+| Provedor de IA e busca | `backend/app/ai.py` | Chunking, embeddings opcionais, recuperação híbrida e chamada ao endpoint compatível |
+| Domínios do widget | `backend/app/models.py`, `backend/app/main.py` | Allowlist por chatbot aplicada às rotas públicas |
+| Migrações | `backend/alembic/` | Evolução versionada do esquema SQLite/PostgreSQL |
 | Widget | `backend/app/widget.js`, `backend/app/widget_page.py` | Botão incorporável e interface de conversa em iframe |
 | Banco | SQLAlchemy | SQLite por padrão; URL configurável |
 
@@ -39,24 +41,25 @@ flowchart LR
 1. O painel ou widget envia `message`, `visitor_id` e, em mensagens seguintes, `conversation_id`.
 2. A API valida o chatbot e confirma que uma conversa fornecida pertence àquele chatbot e visitante.
 3. Limites por IP e chatbot são contabilizados no banco.
-4. A API procura trechos de texto lexicalmente relevantes nos documentos do chatbot.
-5. Se `OPENAI_API_KEY` estiver configurada, envia instruções, contexto recuperado e pergunta ao modelo configurado. Caso contrário, responde com o contexto recuperado ou uma mensagem de falta de informação.
+4. A API procura trechos lexicalmente relevantes e, com embeddings configurados, compara os vetores persistidos dos chunks.
+5. Recupera até seis mensagens anteriores da conversa e envia instruções, contexto recuperado, histórico limitado e pergunta ao modelo configurado.
+6. Sem `OPENAI_API_KEY`, responde com o contexto recuperado ou uma saudação/fallback apropriado.
 6. Mensagem e resposta são persistidas e a resposta retorna ao cliente.
 
-O mecanismo atual não envia histórico anterior como contexto do LLM, não usa embeddings e não deve ser descrito como RAG vetorial.
+O histórico é limitado em quantidade e tamanho. Embeddings são opcionais e persistidos por chunk; sem provedor válido, o sistema retorna ao fallback lexical.
 
 ## Fluxo de documentos
 
 1. Um usuário autenticado envia PDF, TXT, MD ou CSV para um chatbot que possui.
-2. A API limita o tamanho, extrai texto (PDF via `pypdf`; demais formatos como UTF-8) e rejeita conteúdo vazio.
-3. O texto extraído é persistido no banco relacional.
-4. Na solicitação de chat, a busca divide texto por pontuação/quebras de linha, pontua sobreposição de palavras e seleciona trechos.
+2. A API limita tamanho e caracteres, extrai texto (PDF via `pypdf`; demais formatos como UTF-8) e rejeita conteúdo vazio.
+3. O texto é dividido em chunks com sobreposição e persistido junto com embeddings opcionais.
+4. Na solicitação de chat, a busca combina ranking lexical e similaridade dos embeddings persistidos.
 
-Não há fila/worker, OCR, embeddings ou banco vetorial nesta versão.
+Não há fila/worker, OCR ou banco vetorial dedicado nesta versão.
 
 ## Persistência e consistência
 
-SQLAlchemy é a camada de persistência. A configuração padrão utiliza SQLite local; Docker Compose persiste o arquivo em volume. Não há migrações configuradas no repositório; a inicialização cria tabelas ausentes usando `Base.metadata.create_all`.
+SQLAlchemy é a camada de persistência. A configuração padrão utiliza SQLite local; Docker Compose persiste o arquivo em volume. Alembic fornece migrações iniciais; o lifespan ainda pode criar tabelas ausentes durante desenvolvimento com `Base.metadata.create_all`.
 
 SQLite/PostgreSQL são os dialetos explicitamente suportados pelo rate limiter. A URL pode ser alterada, mas outros dialetos não são compatíveis com esse recurso no código atual.
 
@@ -74,7 +77,7 @@ Exemplo:
 ></script>
 ```
 
-Substitua domínio e ID pelos valores do seu ambiente. O endpoint público não verifica uma lista de domínios permitidos por chatbot no estado atual.
+Substitua domínio e ID pelos valores do seu ambiente. As requisições públicas podem ser restritas por uma lista de domínios configurada no chatbot. O backend valida `Origin`, `Referer` ou `X-FlowForge-Origin`; CORS continua sendo uma proteção separada.
 
 ## Implantação
 

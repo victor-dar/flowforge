@@ -9,6 +9,7 @@ type Bot = {
   instructions: string
   welcome_message: string
   color: string
+  allowed_domains: string[]
   document_count: number
 }
 
@@ -47,6 +48,7 @@ function responseError(data: { detail?: unknown }, fallback: string) {
 async function request(path: string, token: string, init: RequestInit = {}) {
   const response = await fetch(`${API}${path}`, {
     ...init,
+    credentials: 'include',
     headers: {
       ...(init.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       Authorization: `Bearer ${token}`,
@@ -97,6 +99,10 @@ export default function App() {
   }
 
   const logout = () => {
+    void fetch(`${API}/api/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    }).catch(() => undefined)
     localStorage.removeItem('flowforge-token')
     setToken('')
     setEmail('')
@@ -134,6 +140,7 @@ export default function App() {
     try {
       const data = await fetch(`${API}/api/auth/${register ? 'register' : 'login'}`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
@@ -590,6 +597,27 @@ export default function App() {
                       />
                       <span>{selected.color}</span>
                     </div>
+                  </label>
+
+                  <label>
+                    Domínios autorizados do widget
+                    <input
+                      value={(selected.allowed_domains || []).join(', ')}
+                      placeholder="https://meusite.com, https://loja.meusite.com"
+                      onBlur={(e) => update({
+                        allowed_domains: e.target.value
+                          .split(',')
+                          .map((domain) => domain.trim())
+                          .filter(Boolean),
+                      })}
+                      onChange={(e) => setSelected({
+                        ...selected,
+                        allowed_domains: e.target.value
+                          .split(',')
+                          .map((domain) => domain.trim())
+                          .filter(Boolean),
+                      })}
+                    />
                   </label>
                 </div>
 

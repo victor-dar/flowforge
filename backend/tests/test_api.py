@@ -191,7 +191,7 @@ def test_uploaded_document_is_used_in_chat_and_deleted_content_is_not_retrieved(
     assert uploaded.status_code == 201
     observed_contexts = []
 
-    async def capture_context(instructions, question, context):
+    async def capture_context(instructions, question, context, history=None):
         observed_contexts.append(context)
         return "Resposta de teste"
 
@@ -269,6 +269,30 @@ def test_greeting_without_ai_provider_has_a_direct_response(client):
     assert "Como posso ajudar" in response.json()["answer"]
 
 
+def test_allowed_widget_domains_reject_unlisted_origin(client):
+    headers = auth_headers(client)
+    bot = client.post(
+        "/api/bots",
+        headers=headers,
+        json={
+            "name": "Site restrito",
+            "allowed_domains": ["https://site-autorizado.com"],
+        },
+    ).json()
+
+    public = client.get(
+        f"/api/public/bots/{bot['id']}",
+        headers={"Origin": "https://site-nao-autorizado.com"},
+    )
+    allowed = client.get(
+        f"/api/public/bots/{bot['id']}",
+        headers={"Origin": "https://site-autorizado.com"},
+    )
+
+    assert public.status_code == 403
+    assert allowed.status_code == 200
+
+
 def test_public_widget_and_chat(client, monkeypatch):
     headers = auth_headers(client)
     bot = client.post(
@@ -284,7 +308,7 @@ def test_public_widget_and_chat(client, monkeypatch):
     assert 'id="form"' in client.get("/widget").text
     assert "data-bot-id" in client.get("/widget.js").text
 
-    async def fake_answer(instructions, question, context):
+    async def fake_answer(instructions, question, context, history=None):
         return "Resposta de teste"
 
     monkeypatch.setattr("app.main.generate_answer", fake_answer)
@@ -334,7 +358,7 @@ def test_provider_failure_returns_503_without_saving_chat(client, monkeypatch):
     headers = auth_headers(client)
     bot = client.post("/api/bots", headers=headers, json={"name": "Sem provedor"}).json()
 
-    async def fail_answer(instructions, question, context):
+    async def fail_answer(instructions, question, context, history=None):
         raise AIProviderError("O serviço de IA está indisponível no momento. Tente novamente.")
 
     monkeypatch.setattr("app.main.generate_answer", fail_answer)

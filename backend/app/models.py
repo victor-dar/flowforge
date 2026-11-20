@@ -36,6 +36,7 @@ class Chatbot(Base):
     instructions: Mapped[str] = mapped_column(Text, default="Seja útil, claro e cordial.")
     welcome_message: Mapped[str] = mapped_column(String(500), default="Olá! Como posso ajudar?")
     color: Mapped[str] = mapped_column(String(7), default="#6d5dfc")
+    allowed_domains: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     owner: Mapped[User] = relationship(back_populates="bots")
     documents: Mapped[list["KnowledgeDocument"]] = relationship(back_populates="bot", cascade="all, delete-orphan")
@@ -51,6 +52,25 @@ class KnowledgeDocument(Base):
     content: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     bot: Mapped[Chatbot] = relationship(back_populates="documents")
+    chunks: Mapped[list["DocumentChunk"]] = relationship(
+        back_populates="document",
+        cascade="all, delete-orphan",
+        order_by="DocumentChunk.position",
+    )
+
+
+class DocumentChunk(Base):
+    __tablename__ = "document_chunks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    document_id: Mapped[int] = mapped_column(
+        ForeignKey("knowledge_documents.id", ondelete="CASCADE"),
+        index=True,
+    )
+    position: Mapped[int] = mapped_column(Integer)
+    content: Mapped[str] = mapped_column(Text)
+    embedding: Mapped[str] = mapped_column(Text, default="")
+    document: Mapped[KnowledgeDocument] = relationship(back_populates="chunks")
 
 
 class Conversation(Base):

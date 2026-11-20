@@ -1,6 +1,7 @@
 import logging
 import math
 import re
+import json
 from collections import Counter
 
 import httpx
@@ -12,6 +13,23 @@ logger = logging.getLogger(__name__)
 
 class AIProviderError(RuntimeError):
     pass
+
+
+def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 150) -> list[str]:
+    normalized = re.sub(r"\s+", " ", text).strip()
+    if not normalized:
+        return []
+    chunks: list[str] = []
+    start = 0
+    while start < len(normalized):
+        end = min(start + chunk_size, len(normalized))
+        chunk = normalized[start:end].strip()
+        if chunk:
+            chunks.append(chunk)
+        if end == len(normalized):
+            break
+        start = max(0, end - overlap)
+    return chunks
 
 
 def relevant_context(question: str, documents: list[str], limit: int = 4) -> str:
@@ -105,11 +123,54 @@ async def hybrid_context(question: str, documents: list[str], limit: int = 4) ->
         return lexical
 
 
-async def generate_answer(instructions: str, question: str, context: str) -> str:
+async def hybrid_chunk_context(
+    question: str,
+    chunks: list[tuple[str, list[float] | None]],
+    limit: int = 4,
+) -> str:
+    lexical = relevant_context(
+        question,
+        [content for content, _ in chunks],
+        limit=limit,
+    )
+    if not settings.openai_api_key:
+        return lexical
+    try:
+        question_embedding = await embed_text(question)
+        ranked: list[tuple[float, str]] = []
+        for content, embedding in chunks:
+            if embedding:
+                score = cosine_similarity(question_embedding, embedding)
+                if score > 0.72:
+                    ranked.append((score, content))
+        ranked.sort(key=lambda entry: entry[0], reverse=True)
+        selected = [
+            content
+            for _, content in ranked[:limit]
+        ]
+        for content in lexical.split("\n"):
+            if content and content not in selected:
+                selected.append(content)
+            if len(selected) >= limit:
+                break
+        return "\n".join(selected)[:6000]
+    except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError):
+        logger.exception("Falha ao recuperar embeddings persistidos; usando busca lexical")
+        return lexical
+
+
+async def generate_answer(
+    instructions: str,
+    question: str,
+    context: str,
+    history: list[dict[str, str]] | None = None,
+) -> str:
     if settings.openai_api_key:
         messages = [{"role": "system", "content": instructions}]
         if context:
             messages.append({"role": "system", "content": f"Informações da empresa (use somente quando relevantes):\n{context}"})
+        if history:
+            messages.extend(history)
         messages.append({"role": "user", "content": question})
         try:
             async with httpx.AsyncClient(timeout=30) as client:

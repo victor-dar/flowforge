@@ -1,8 +1,84 @@
 from fastapi.responses import HTMLResponse
 
-# This module's HTML is served by the API to keep the embeddable widget self-contained.
-WIDGET_HTML = '''<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
-*{box-sizing:border-box}body{font:14px system-ui,-apple-system,sans-serif;margin:0;color:#25243a;background:#fff}.app{height:100vh;display:flex;flex-direction:column}.head{padding:17px 18px;background:#6d5dfc;color:#fff;display:flex;align-items:center;gap:10px}.head strong{font-size:14px}.head small{display:block;opacity:.8;margin-top:3px}.dot{width:34px;height:34px;background:#ffffff30;border-radius:11px;display:grid;place-items:center;font-size:19px}.messages{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px;background:#fafafe}.bubble{max-width:84%;padding:10px 12px;border-radius:12px;line-height:1.45;white-space:pre-wrap}.assistant{background:white;border:1px solid #eeeef3;align-self:flex-start}.user{background:#6d5dfc;color:white;align-self:flex-end}.form{display:flex;gap:8px;padding:12px;border-top:1px solid #eeeef3}.form input{flex:1;border:1px solid #e5e5ed;border-radius:9px;padding:10px;min-width:0;font:inherit;outline:none}.form button{border:0;border-radius:9px;background:#6d5dfc;color:white;padding:0 13px;font-weight:600;cursor:pointer}.powered{text-align:center;font-size:10px;color:#aaa;padding:0 0 8px}
-</style></head><body><div class="app"><header class="head"><span class="dot">✳</span><div><strong id="name">Assistente</strong><small>Normalmente responde em instantes</small></div></header><main class="messages" id="messages"></main><form class="form" id="form"><input id="input" maxlength="4000" placeholder="Escreva sua mensagem…" autocomplete="off" required><button>Enviar</button></form><div class="powered">Atendimento inteligente por FlowForge</div></div><script>
-const params=new URLSearchParams(location.search),botId=params.get('bot_id'),api=location.origin;let conversation=null;const visitorKey='flowforge-visitor-'+botId;let visitor=localStorage.getItem(visitorKey);if(!visitor){visitor=crypto.randomUUID();localStorage.setItem(visitorKey,visitor)}const messages=document.getElementById('messages');function add(text,role){const el=document.createElement('div');el.className='bubble '+role;el.textContent=text;messages.append(el);messages.scrollTop=messages.scrollHeight}fetch(api+'/api/public/bots/'+encodeURIComponent(botId)).then(r=>r.ok?r.json():Promise.reject()).then(bot=>{document.getElementById('name').textContent=bot.name;document.querySelector('.head').style.background=bot.color;document.querySelectorAll('.form button').forEach(b=>b.style.background=bot.color);add(bot.welcome_message,'assistant')}).catch(()=>add('Este assistente não está disponível no momento.','assistant'));document.getElementById('form').addEventListener('submit',async e=>{e.preventDefault();const input=document.getElementById('input'),text=input.value.trim();if(!text)return;input.value='';add(text,'user');const waiting=document.createElement('div');waiting.className='bubble assistant';waiting.textContent='…';messages.append(waiting);try{const r=await fetch(api+'/api/public/bots/'+encodeURIComponent(botId)+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,visitor_id:visitor,conversation_id:conversation})});const data=await r.json();if(!r.ok)throw Error(data.detail||'Falha ao responder');conversation=data.conversation_id;waiting.textContent=data.answer}catch{waiting.textContent='Não foi possível enviar sua mensagem. Tente novamente.'}messages.scrollTop=messages.scrollHeight});
-</script></body></html>'''
+
+WIDGET_HTML = '''<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+  *{box-sizing:border-box}body{font:14px system-ui,-apple-system,sans-serif;margin:0;color:#25243a;background:#fff}
+  .app{height:100vh;display:flex;flex-direction:column}.head{padding:17px 18px;background:#6d5dfc;color:#fff;display:flex;align-items:center;gap:10px}
+  .head strong{font-size:14px}.head small{display:block;opacity:.8;margin-top:3px}.dot{width:34px;height:34px;background:#ffffff30;border-radius:11px;display:grid;place-items:center;font-size:19px}
+  .messages{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px;background:#fafafe}
+  .bubble{max-width:84%;padding:10px 12px;border-radius:12px;line-height:1.45;white-space:pre-wrap}.assistant{background:white;border:1px solid #eeeef3;align-self:flex-start}.user{background:#6d5dfc;color:white;align-self:flex-end}
+  .form{display:flex;gap:8px;padding:12px;border-top:1px solid #eeeef3}.form input{flex:1;border:1px solid #e5e5ed;border-radius:9px;padding:10px;min-width:0;font:inherit;outline:none}
+  .form button{border:0;border-radius:9px;background:#6d5dfc;color:white;padding:0 13px;font-weight:600;cursor:pointer}.powered{text-align:center;font-size:10px;color:#aaa;padding:0 0 8px}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="head"><span class="dot">✳</span><div><strong id="name">Assistente</strong><small>Normalmente responde em instantes</small></div></header>
+    <main class="messages" id="messages"></main>
+    <form class="form" id="form"><input id="input" maxlength="4000" placeholder="Escreva sua mensagem…" autocomplete="off" required><button>Enviar</button></form>
+    <div class="powered">Atendimento inteligente por FlowForge</div>
+  </div>
+  <script>
+  const params = new URLSearchParams(location.search);
+  const botId = params.get('bot_id');
+  const parentDomain = params.get('domain');
+  const api = location.origin;
+  let conversation = null;
+  const visitorKey = 'flowforge-visitor-' + botId;
+  let visitor = localStorage.getItem(visitorKey);
+  if (!visitor) {
+    visitor = crypto.randomUUID();
+    localStorage.setItem(visitorKey, visitor);
+  }
+  const messages = document.getElementById('messages');
+  function add(text, role) {
+    const el = document.createElement('div');
+    el.className = 'bubble ' + role;
+    el.textContent = text;
+    messages.append(el);
+    messages.scrollTop = messages.scrollHeight;
+  }
+  const originHeaders = {'X-FlowForge-Origin': parentDomain || location.origin};
+  fetch(api + '/api/public/bots/' + encodeURIComponent(botId), {headers: originHeaders})
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(bot => {
+      document.getElementById('name').textContent = bot.name;
+      document.querySelector('.head').style.background = bot.color;
+      document.querySelectorAll('.form button').forEach(b => b.style.background = bot.color);
+      add(bot.welcome_message, 'assistant');
+    })
+    .catch(() => add('Este assistente não está disponível no momento.', 'assistant'));
+  document.getElementById('form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const input = document.getElementById('input');
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    add(text, 'user');
+    const waiting = document.createElement('div');
+    waiting.className = 'bubble assistant';
+    waiting.textContent = '…';
+    messages.append(waiting);
+    try {
+      const r = await fetch(api + '/api/public/bots/' + encodeURIComponent(botId) + '/chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-FlowForge-Origin': parentDomain || location.origin},
+        body: JSON.stringify({message: text, visitor_id: visitor, conversation_id: conversation})
+      });
+      const data = await r.json();
+      if (!r.ok) throw Error(data.detail || 'Falha ao responder');
+      conversation = data.conversation_id;
+      waiting.textContent = data.answer;
+    } catch {
+      waiting.textContent = 'Não foi possível enviar sua mensagem. Tente novamente.';
+    }
+    messages.scrollTop = messages.scrollHeight;
+  });
+  </script>
+</body>
+</html>'''

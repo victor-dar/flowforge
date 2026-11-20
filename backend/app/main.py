@@ -3,19 +3,36 @@ import json
 import logging
 from pathlib import Path
 from time import perf_counter
+from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.ai import AIProviderError, generate_answer, hybrid_context
+from app.ai import (
+    AIProviderError,
+    chunk_text,
+    embed_text,
+    generate_answer,
+    hybrid_chunk_context,
+)
 from app.auth import create_token, get_current_user, get_db, hash_password, verify_password
 from app.config import settings
 from app.documents import DocumentProcessingError, extract_document_text
-from app.models import Base, Chatbot, Conversation, KnowledgeDocument, Message, SessionLocal, User, engine
+from app.models import (
+    Base,
+    Chatbot,
+    Conversation,
+    DocumentChunk,
+    KnowledgeDocument,
+    Message,
+    SessionLocal,
+    User,
+    engine,
+)
 from app.schemas import BotCreate, BotOut, BotUpdate, ChatOut, ChatRequest, Credentials, TokenOut, UserOut
 from app.rate_limit import client_address, consume_rate_limit
 from app.widget_page import WIDGET_HTML
@@ -54,14 +71,69 @@ app.add_middleware(RequestLoggingMiddleware)
 
 
 def bot_output(bot: Chatbot) -> BotOut:
-    return BotOut(id=bot.id, name=bot.name, business_name=bot.business_name, description=bot.description, instructions=bot.instructions, welcome_message=bot.welcome_message, color=bot.color, created_at=bot.created_at.isoformat() if bot.created_at else "", document_count=len(bot.documents))
+    return BotOut(
+        id=bot.id,
+        name=bot.name,
+        business_name=bot.business_name,
+        description=bot.description,
+        instructions=bot.instructions,
+        welcome_message=bot.welcome_message,
+        color=bot.color,
+        allowed_domains=[
+            item.strip()
+            for item in (bot.allowed_domains or "").split(",")
+            if item.strip()
+        ],
+        created_at=bot.created_at.isoformat() if bot.created_at else "",
+        document_count=len(bot.documents),
+    )
+
+
+def normalize_domains(domains: list[str]) -> str:
+    normalized: list[str] = []
+    for domain in domains:
+        value = domain.strip().lower().rstrip("/")
+        if value.startswith(("http://", "https://")):
+            normalized.append(value)
+        elif value:
+            normalized.append(f"https://{value}")
+    return ",".join(dict.fromkeys(normalized))
 
 
 def owned_bot(bot_id: int, owner_id: int, db: Session) -> Chatbot:
-    bot = db.scalar(select(Chatbot).options(selectinload(Chatbot.documents)).where(Chatbot.id == bot_id, Chatbot.owner_id == owner_id))
+    bot = db.scalar(
+        select(Chatbot)
+        .options(
+            selectinload(Chatbot.documents).selectinload(KnowledgeDocument.chunks)
+        )
+        .where(Chatbot.id == bot_id, Chatbot.owner_id == owner_id)
+    )
     if not bot:
         raise HTTPException(status_code=404, detail="Chatbot não encontrado")
     return bot
+
+
+def validate_public_origin(request: Request, bot: Chatbot) -> None:
+    allowed = [
+        item.strip().lower().rstrip("/")
+        for item in (bot.allowed_domains or "").split(",")
+        if item.strip()
+    ]
+    if not allowed:
+        return
+    candidate_headers = [
+        request.headers.get("origin"),
+        request.headers.get("x-flowforge-origin"),
+        request.headers.get("referer"),
+    ]
+    origins: set[str] = set()
+    for candidate in candidate_headers:
+        if candidate:
+            parsed = urlparse(candidate.strip())
+            if parsed.scheme and parsed.hostname:
+                origins.add(f"{parsed.scheme.lower()}://{parsed.netloc.lower().rstrip('/')}")
+    if not any(origin in allowed for origin in origins):
+        raise HTTPException(status_code=403, detail="Origem não autorizada para este assistente")
 
 
 @app.get("/health")
@@ -122,7 +194,18 @@ def register(data: Credentials, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
-    return TokenOut(access_token=create_token(user.id), user=UserOut.model_validate(user))
+    token = create_token(user.id)
+    payload = TokenOut(access_token=token, user=UserOut.model_validate(user))
+    response = JSONResponse(payload.model_dump(), status_code=201)
+    response.set_cookie(
+        "flowforge_access",
+        token,
+        httponly=True,
+        secure=settings.app_env.lower() == "production",
+        samesite="lax",
+        max_age=settings.access_token_minutes * 60,
+    )
+    return response
 
 
 @app.post(
@@ -134,7 +217,29 @@ def login(data: Credentials, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == data.email.lower()))
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="E-mail ou senha incorretos")
-    return TokenOut(access_token=create_token(user.id), user=UserOut.model_validate(user))
+    token = create_token(user.id)
+    payload = TokenOut(access_token=token, user=UserOut.model_validate(user))
+    response = JSONResponse(payload.model_dump())
+    response.set_cookie(
+        "flowforge_access",
+        token,
+        httponly=True,
+        secure=settings.app_env.lower() == "production",
+        samesite="lax",
+        max_age=settings.access_token_minutes * 60,
+    )
+    return response
+
+
+@app.post("/api/auth/logout")
+def logout(response: Response):
+    response.delete_cookie(
+        "flowforge_access",
+        httponly=True,
+        secure=settings.app_env.lower() == "production",
+        samesite="lax",
+    )
+    return {"status": "ok"}
 
 
 @app.get("/api/auth/me", response_model=UserOut)
@@ -150,7 +255,9 @@ def list_bots(user: User = Depends(get_current_user), db: Session = Depends(get_
 
 @app.post("/api/bots", response_model=BotOut, status_code=201)
 def create_bot(data: BotCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    bot = Chatbot(owner_id=user.id, **data.model_dump())
+    values = data.model_dump()
+    allowed_domains = normalize_domains(values.pop("allowed_domains", []))
+    bot = Chatbot(owner_id=user.id, allowed_domains=allowed_domains, **values)
     db.add(bot)
     db.commit()
     db.refresh(bot)
@@ -176,7 +283,10 @@ def list_documents(bot_id: int, user: User = Depends(get_current_user), db: Sess
 @app.patch("/api/bots/{bot_id}", response_model=BotOut)
 def update_bot(bot_id: int, data: BotUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     bot = owned_bot(bot_id, user.id, db)
-    for key, value in data.model_dump(exclude_unset=True).items():
+    changes = data.model_dump(exclude_unset=True)
+    if "allowed_domains" in changes:
+        changes["allowed_domains"] = normalize_domains(changes["allowed_domains"] or [])
+    for key, value in changes.items():
         setattr(bot, key, value)
     db.commit()
     db.refresh(bot)
@@ -208,6 +318,24 @@ async def upload_document(bot_id: int, file: UploadFile = File(...), user: User 
 
     doc = KnowledgeDocument(bot_id=bot.id, name=filename[:255], content=text)
     db.add(doc)
+    db.flush()
+    for position, chunk in enumerate(chunk_text(text)):
+        embedding: list[float] = []
+        if settings.openai_api_key:
+            try:
+                embedding = await embed_text(chunk)
+            except Exception:
+                logging.getLogger("flowforge.documents").exception(
+                    "Falha ao gerar embedding do documento; preservando chunk sem embedding"
+                )
+        db.add(
+            DocumentChunk(
+                document_id=doc.id,
+                position=position,
+                content=chunk,
+                embedding=json.dumps(embedding) if embedding else "",
+            )
+        )
     db.commit()
     db.refresh(doc)
     return {"id": doc.id, "name": doc.name}
@@ -231,10 +359,11 @@ def list_conversations(bot_id: int, user: User = Depends(get_current_user), db: 
 
 
 @app.get("/api/public/bots/{bot_id}")
-def get_public_bot(bot_id: int, db: Session = Depends(get_db)):
+def get_public_bot(bot_id: int, request: Request, db: Session = Depends(get_db)):
     bot = db.get(Chatbot, bot_id)
     if not bot:
         raise HTTPException(status_code=404, detail="Chatbot não encontrado")
+    validate_public_origin(request, bot)
     return {
         "id": bot.id,
         "name": bot.name,
@@ -250,9 +379,16 @@ async def public_chat(
     request: Request,
     db: Session = Depends(get_db),
 ):
-    bot = db.scalar(select(Chatbot).options(selectinload(Chatbot.documents)).where(Chatbot.id == bot_id))
+    bot = db.scalar(
+        select(Chatbot)
+        .options(
+            selectinload(Chatbot.documents).selectinload(KnowledgeDocument.chunks)
+        )
+        .where(Chatbot.id == bot_id)
+    )
     if not bot:
         raise HTTPException(status_code=404, detail="Chatbot não encontrado")
+    validate_public_origin(request, bot)
     conversation = None
     if data.conversation_id:
         conversation = db.scalar(
@@ -283,10 +419,40 @@ async def public_chat(
         conversation = Conversation(bot_id=bot_id, visitor_id=data.visitor_id)
         db.add(conversation)
         db.flush()
+    previous_messages = db.scalars(
+        select(Message)
+        .where(Message.conversation_id == conversation.id)
+        .order_by(Message.created_at.desc(), Message.id.desc())
+        .limit(6)
+    ).all()
+    history = [
+        {"role": message.role, "content": message.content[:1000]}
+        for message in reversed(previous_messages)
+        if message.role in {"user", "assistant"}
+    ]
     db.add(Message(conversation_id=conversation.id, role="user", content=data.message))
-    context = await hybrid_context(data.message, [document.content for document in bot.documents])
+    persisted_chunks: list[tuple[str, list[float] | None]] = []
+    for document in bot.documents:
+        for chunk in document.chunks:
+            try:
+                embedding = json.loads(chunk.embedding) if chunk.embedding else None
+            except (json.JSONDecodeError, TypeError):
+                embedding = None
+            persisted_chunks.append((chunk.content, embedding))
+    if persisted_chunks:
+        context = await hybrid_chunk_context(data.message, persisted_chunks)
+    else:
+        context = await hybrid_chunk_context(
+            data.message,
+            [(chunk, None) for document in bot.documents for chunk in chunk_text(document.content)],
+        )
     try:
-        answer = await generate_answer(bot.instructions, data.message, context)
+        answer = await generate_answer(
+            bot.instructions,
+            data.message,
+            context,
+            history,
+        )
     except AIProviderError as exc:
         db.rollback()
         raise HTTPException(

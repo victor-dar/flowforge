@@ -14,7 +14,7 @@ from app.documents import (
     UnsupportedDocumentType,
     extract_document_text,
 )
-from app.ai import cosine_similarity, relevant_context
+from app.ai import chunk_text, cosine_similarity, relevant_context
 
 
 FIXTURES = Path(__file__).parent / "fixtures" / "rag_eval"
@@ -130,6 +130,14 @@ def test_cosine_similarity_handles_valid_vectors_and_edge_cases():
     assert cosine_similarity([1.0, 0.0], [0.0, 1.0]) == pytest.approx(0.0)
     assert cosine_similarity([], []) == 0.0
     assert cosine_similarity([1.0], [1.0, 2.0]) == 0.0
+
+
+def test_chunk_text_splits_large_document_with_overlap():
+    text = "A" * 1200
+    chunks = chunk_text(text, chunk_size=500, overlap=50)
+
+    assert len(chunks) == 3
+    assert chunks[0][-50:] == chunks[1][:50]
 
 
 def test_evaluation_corpus_has_unique_questions_and_valid_source_excerpts():

@@ -24,6 +24,7 @@ A especificação OpenAPI interativa gerada pelo FastAPI está disponível em `/
 | `POST` | `/api/auth/register` | Criar usuário e emitir JWT (`201`) |
 | `POST` | `/api/auth/login` | Validar credenciais e emitir JWT |
 | `GET` | `/api/auth/me` | Retornar o usuário autenticado |
+| `POST` | `/api/auth/logout` | Remover o cookie de autenticação |
 
 Exemplo:
 

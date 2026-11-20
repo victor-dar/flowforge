@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 import jwt
 from fastapi import Depends, HTTPException, status
+from fastapi import Cookie, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -60,6 +61,7 @@ def create_token(user_id: int) -> str:
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+    access_token_cookie: str | None = Cookie(default=None, alias="flowforge_access"),
     db: Session = Depends(get_db),
 ) -> User:
     unauthorized = HTTPException(
@@ -67,11 +69,14 @@ def get_current_user(
         detail="Autenticação necessária",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    if not credentials:
+    token = access_token_cookie if settings.app_env.lower() == "production" else None
+    if credentials:
+        token = credentials.credentials
+    if not token:
         raise unauthorized
     try:
         claims = jwt.decode(
-            credentials.credentials,
+            token,
             settings.secret_key,
             algorithms=["HS256"],
             options={"require": ["exp", "sub"]},

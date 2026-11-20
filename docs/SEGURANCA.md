@@ -31,7 +31,9 @@ Este documento registra controles encontrados no MVP e lacunas conhecidas. Não 
 - Proteções contra prompt injection não são garantidas. Documentos e mensagens devem ser considerados conteúdo não confiável.
 - Extração de PDF não é sandbox isolada; revisite limites de CPU/memória e bibliotecas antes de operar com uploads públicos.
 - Rate limit usa janela fixa e banco; não substitui proteção de borda, monitoramento ou mitigação distribuída.
-- O frontend guarda o JWT em `localStorage`, o que aumenta o impacto de uma vulnerabilidade XSS.
+- O frontend atualmente guarda o JWT em `localStorage`, o que aumenta o impacto de uma vulnerabilidade XSS.
+- Login e cadastro também definem um cookie `flowforge_access` com `HttpOnly` e `SameSite=Lax`; em produção o cookie é `Secure`.
+- O frontend ainda mantém o token no `localStorage` para compatibilidade. O suporte completo a cookies exige migrar todas as chamadas privadas, remover o armazenamento no navegador e adicionar proteção CSRF explícita.
 - SQLite e `create_all` não fornecem, por si sós, estratégia de migração, alta disponibilidade ou operação concorrente.
 
 ## Privacidade e LGPD
