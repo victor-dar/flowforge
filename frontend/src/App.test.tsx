@@ -51,6 +51,9 @@ describe('FlowForge authentication session', () => {
           user: { id: 2, email: 'owner@example.com' },
         })
       }
+      if (String(input).includes('/api/auth/me')) {
+        return jsonResponse({ id: 2, email: 'owner@example.com' })
+      }
       return jsonResponse([existingBot])
     })
 
@@ -63,6 +66,20 @@ describe('FlowForge authentication session', () => {
     expect(await screen.findAllByText(existingBot.name)).not.toHaveLength(0)
     expect(screen.getByText('owner@example.com')).toBeInTheDocument()
     expect(localStorage.getItem('flowforge-token')).toBe('new-session-token')
+  })
+
+  it('restores the authenticated profile from the session endpoint', async () => {
+    localStorage.setItem('flowforge-token', 'stored-session-token')
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      if (String(input).includes('/api/auth/me')) {
+        return jsonResponse({ id: 7, email: 'restored@example.com' })
+      }
+      return jsonResponse([existingBot])
+    })
+
+    render(<App />)
+
+    expect(await screen.findByText('restored@example.com')).toBeInTheDocument()
   })
 
   it('logs out, removes the token and clears the previous account data', async () => {

@@ -1,0 +1,31 @@
+services:
+  api:
+    build: ./backend
+    environment:
+      APP_ENV: production
+      DATABASE_URL: sqlite:////data/flowforge.db
+      SECRET_KEY: ${SECRET_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
+      AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:-10}
+      PUBLIC_CHAT_RATE_LIMIT_PER_MINUTE: ${PUBLIC_CHAT_RATE_LIMIT_PER_MINUTE:-20}
+      PUBLIC_CHAT_DAILY_LIMIT_PER_BOT: ${PUBLIC_CHAT_DAILY_LIMIT_PER_BOT:-500}
+      AI_MAX_OUTPUT_TOKENS: ${AI_MAX_OUTPUT_TOKENS:-600}
+      MAX_DOCUMENT_BYTES: ${MAX_DOCUMENT_BYTES:-5242880}
+      MAX_DOCUMENT_CHARACTERS: ${MAX_DOCUMENT_CHARACTERS:-500000}
+    volumes:
+      - flowforge_staging_data:/data
+    ports:
+      - "${API_PORT:-8000}:8000"
+  web:
+    build: ./frontend
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    depends_on:
+      - api
+volumes:
+  flowforge_staging_data:

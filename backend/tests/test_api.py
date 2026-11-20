@@ -252,6 +252,23 @@ def test_document_upload_rejects_unsupported_and_oversized_files(client, monkeyp
     assert client.get(f"/api/bots/{bot['id']}/documents", headers=headers).json() == []
 
 
+def test_greeting_without_ai_provider_has_a_direct_response(client):
+    headers = auth_headers(client)
+    bot = client.post(
+        "/api/bots",
+        headers=headers,
+        json={"name": "Cafeteria"},
+    ).json()
+
+    response = client.post(
+        f"/api/public/bots/{bot['id']}/chat",
+        json={"message": "oi", "visitor_id": "greeting-test"},
+    )
+
+    assert response.status_code == 200
+    assert "Como posso ajudar" in response.json()["answer"]
+
+
 def test_public_widget_and_chat(client, monkeypatch):
     headers = auth_headers(client)
     bot = client.post(

@@ -106,6 +106,8 @@ A API lê configurações do ambiente e de `backend/.env`. As opções disponív
 
 Além do limite de upload (`MAX_DOCUMENT_BYTES`, padrão de 5 MB), o texto extraído tem limite de `MAX_DOCUMENT_CHARACTERS` (padrão de 500.000 caracteres). Arquivos que ultrapassarem qualquer limite são rejeitados sem salvar conteúdo parcial.
 
+O RAG combina ranking lexical local com embeddings da OpenAI quando `OPENAI_API_KEY` está configurado. Sem uma chave, a busca continua disponível usando recuperação lexical.
+
 Para produção, use `APP_ENV=production`, configure uma `SECRET_KEY` aleatória e exclusiva com pelo menos 32 caracteres, defina origens explícitas em `CORS_ORIGINS` e termine TLS em um proxy/ingress confiável. Não use a chave padrão do Compose. Consulte [Segurança e privacidade](docs/SEGURANCA.md) antes de expor a aplicação.
 
 ## Testes

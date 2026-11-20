@@ -118,6 +118,11 @@ export default function App() {
           setError('Não foi possível carregar seus assistentes. Verifique a conexão com a API e tente novamente.')
         }
       })
+      request('/api/auth/me', token)
+        .then((user: { email: string }) => setEmail(user.email))
+        .catch((error: unknown) => {
+          if (error instanceof ApiError && error.status === 401) logout()
+        })
     }
   }, [token])
 

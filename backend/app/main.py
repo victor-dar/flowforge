@@ -1,13 +1,17 @@
 from contextlib import asynccontextmanager
+import json
+import logging
 from pathlib import Path
+from time import perf_counter
 
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
-from sqlalchemy import select
+from starlette.middleware.base import BaseHTTPMiddleware
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.ai import AIProviderError, generate_answer, relevant_context
+from app.ai import AIProviderError, generate_answer, hybrid_context
 from app.auth import create_token, get_current_user, get_db, hash_password, verify_password
 from app.config import settings
 from app.documents import DocumentProcessingError, extract_document_text
@@ -28,6 +32,27 @@ app = FastAPI(title="FlowForge API", version="0.2.0", description="API para cria
 app.add_middleware(CORSMiddleware, allow_origins=[origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        started = perf_counter()
+        response = await call_next(request)
+        logging.getLogger("flowforge.request").info(
+            json.dumps(
+                {
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status": response.status_code,
+                    "duration_ms": round((perf_counter() - started) * 1000, 2),
+                },
+                ensure_ascii=False,
+            )
+        )
+        return response
+
+
+app.add_middleware(RequestLoggingMiddleware)
+
+
 def bot_output(bot: Chatbot) -> BotOut:
     return BotOut(id=bot.id, name=bot.name, business_name=bot.business_name, description=bot.description, instructions=bot.instructions, welcome_message=bot.welcome_message, color=bot.color, created_at=bot.created_at.isoformat() if bot.created_at else "", document_count=len(bot.documents))
 
@@ -42,6 +67,22 @@ def owned_bot(bot_id: int, owner_id: int, db: Session) -> Chatbot:
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/metrics")
+def metrics(db: Session = Depends(get_db)):
+    user_count = db.scalar(select(func.count()).select_from(User)) or 0
+    bot_count = db.scalar(select(func.count()).select_from(Chatbot)) or 0
+    document_count = db.scalar(select(func.count()).select_from(KnowledgeDocument)) or 0
+    conversation_count = db.scalar(select(func.count()).select_from(Conversation)) or 0
+    message_count = db.scalar(select(func.count()).select_from(Message)) or 0
+    return {
+        "users": user_count,
+        "bots": bot_count,
+        "documents": document_count,
+        "conversations": conversation_count,
+        "messages": message_count,
+    }
 
 
 def enforce_auth_rate_limit(request: Request, db: Session = Depends(get_db)) -> None:
@@ -243,7 +284,7 @@ async def public_chat(
         db.add(conversation)
         db.flush()
     db.add(Message(conversation_id=conversation.id, role="user", content=data.message))
-    context = relevant_context(data.message, [document.content for document in bot.documents])
+    context = await hybrid_context(data.message, [document.content for document in bot.documents])
     try:
         answer = await generate_answer(bot.instructions, data.message, context)
     except AIProviderError as exc:

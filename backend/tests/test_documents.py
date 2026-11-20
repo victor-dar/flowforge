@@ -14,6 +14,7 @@ from app.documents import (
     UnsupportedDocumentType,
     extract_document_text,
 )
+from app.ai import cosine_similarity, relevant_context
 
 
 FIXTURES = Path(__file__).parent / "fixtures" / "rag_eval"
@@ -108,6 +109,27 @@ def test_rejects_extracted_text_above_character_limit_instead_of_truncating():
 def test_rejects_upload_above_byte_limit():
     with pytest.raises(DocumentUploadTooLarge, match="limite configurado"):
         extract_document_text("file.txt", "text/plain", b"12345", 4, 100)
+
+
+def test_hybrid_lexical_context_ranks_relevant_paraphrase():
+    documents = [
+        "O suporte envia a primeira resposta em até um dia útil.",
+        "Pedidos podem ser cancelados sem custo até 24 horas.",
+    ]
+
+    context = relevant_context(
+        "Em quanto tempo alguém costuma me responder?",
+        documents,
+    )
+
+    assert "primeira resposta" in context
+
+
+def test_cosine_similarity_handles_valid_vectors_and_edge_cases():
+    assert cosine_similarity([1.0, 0.0], [1.0, 0.0]) == pytest.approx(1.0)
+    assert cosine_similarity([1.0, 0.0], [0.0, 1.0]) == pytest.approx(0.0)
+    assert cosine_similarity([], []) == 0.0
+    assert cosine_similarity([1.0], [1.0, 2.0]) == 0.0
 
 
 def test_evaluation_corpus_has_unique_questions_and_valid_source_excerpts():
