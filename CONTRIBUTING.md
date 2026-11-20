@@ -25,6 +25,7 @@ Frontend:
 ```bash
 cd frontend
 npm ci
+npm test
 npm run build
 ```
 

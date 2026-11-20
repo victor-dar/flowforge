@@ -1,0 +1,148 @@
+{
+  "chatbots": {
+    "atendimento": ["manual_atendimento.txt", "politica_comercial.md"],
+    "tecnico": ["faq_tecnico.csv"]
+  },
+  "questions": [
+    {
+      "id": "direct-greeting",
+      "chatbot_id": "atendimento",
+      "question": "Como devo iniciar o atendimento?",
+      "expected_documents": ["manual_atendimento.txt"],
+      "reference_excerpts": [
+        {
+          "document": "manual_atendimento.txt",
+          "text": "Cumprimente cada cliente com cordialidade e pergunte como pode ajudar."
+        }
+      ],
+      "category": "direct_answer",
+      "expected_behavior": "answer_from_sources"
+    },
+    {
+      "id": "paraphrase-first-response",
+      "chatbot_id": "atendimento",
+      "question": "Em quanto tempo alguém costuma me responder?",
+      "expected_documents": ["manual_atendimento.txt"],
+      "reference_excerpts": [
+        {
+          "document": "manual_atendimento.txt",
+          "text": "a equipe envia a primeira resposta em até um dia útil."
+        }
+      ],
+      "category": "paraphrase",
+      "expected_behavior": "answer_from_sources"
+    },
+    {
+      "id": "direct-cancellation-window",
+      "chatbot_id": "atendimento",
+      "question": "Até quando posso cancelar sem custo?",
+      "expected_documents": ["politica_comercial.md"],
+      "reference_excerpts": [
+        {
+          "document": "politica_comercial.md",
+          "text": "Pedidos podem ser cancelados sem custo até 24 horas depois da confirmação."
+        }
+      ],
+      "category": "direct_answer",
+      "expected_behavior": "answer_from_sources"
+    },
+    {
+      "id": "paraphrase-refund",
+      "chatbot_id": "atendimento",
+      "question": "Depois que aprovarem meu cancelamento, quando recebo o dinheiro?",
+      "expected_documents": ["politica_comercial.md"],
+      "reference_excerpts": [
+        {
+          "document": "politica_comercial.md",
+          "text": "o reembolso é solicitado em até cinco dias úteis."
+        }
+      ],
+      "category": "paraphrase",
+      "expected_behavior": "answer_from_sources"
+    },
+    {
+      "id": "direct-api-auth",
+      "chatbot_id": "tecnico",
+      "question": "Qual cabeçalho uso para autenticar na API?",
+      "expected_documents": ["faq_tecnico.csv"],
+      "reference_excerpts": [
+        {
+          "document": "faq_tecnico.csv",
+          "text": "Envie o token de acesso no cabeçalho Authorization usando o esquema Bearer."
+        }
+      ],
+      "category": "direct_answer",
+      "expected_behavior": "answer_from_sources"
+    },
+    {
+      "id": "paraphrase-webhook-retry",
+      "chatbot_id": "tecnico",
+      "question": "Quantas novas tentativas acontecem quando a entrega do webhook falha?",
+      "expected_documents": ["faq_tecnico.csv"],
+      "reference_excerpts": [
+        {
+          "document": "faq_tecnico.csv",
+          "text": "o sistema tenta entregar o webhook novamente até três vezes"
+        }
+      ],
+      "category": "paraphrase",
+      "expected_behavior": "answer_from_sources"
+    },
+    {
+      "id": "unanswerable-weekend-hours",
+      "chatbot_id": "atendimento",
+      "question": "A cafeteria abre aos domingos?",
+      "expected_documents": [],
+      "reference_excerpts": [],
+      "category": "no_answer",
+      "expected_behavior": "abstain"
+    },
+    {
+      "id": "unanswerable-payment-method",
+      "chatbot_id": "atendimento",
+      "question": "Quais cartões de crédito são aceitos?",
+      "expected_documents": [],
+      "reference_excerpts": [],
+      "category": "no_answer",
+      "expected_behavior": "abstain"
+    },
+    {
+      "id": "cross-document-response-and-refund",
+      "chatbot_id": "atendimento",
+      "question": "Qual é o prazo da primeira resposta e em quanto tempo solicitam o reembolso?",
+      "expected_documents": ["manual_atendimento.txt", "politica_comercial.md"],
+      "reference_excerpts": [
+        {
+          "document": "manual_atendimento.txt",
+          "text": "a equipe envia a primeira resposta em até um dia útil."
+        },
+        {
+          "document": "politica_comercial.md",
+          "text": "o reembolso é solicitado em até cinco dias úteis."
+        }
+      ],
+      "category": "multi_document",
+      "expected_behavior": "answer_from_sources"
+    },
+    {
+      "id": "isolation-no-technical-api-from-support-bot",
+      "chatbot_id": "atendimento",
+      "question": "Qual cabeçalho de autenticação a API técnica exige?",
+      "expected_documents": [],
+      "reference_excerpts": [],
+      "category": "chatbot_isolation",
+      "must_not_use_documents": ["faq_tecnico.csv"],
+      "expected_behavior": "abstain"
+    },
+    {
+      "id": "isolation-no-business-policy-from-technical-bot",
+      "chatbot_id": "tecnico",
+      "question": "Quantas horas tenho para cancelar um pedido sem custo?",
+      "expected_documents": [],
+      "reference_excerpts": [],
+      "category": "chatbot_isolation",
+      "must_not_use_documents": ["politica_comercial.md"],
+      "expected_behavior": "abstain"
+    }
+  ]
+}

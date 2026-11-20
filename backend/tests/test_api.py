@@ -40,6 +40,19 @@ def test_register_login_and_duplicate_email(client):
     assert duplicate.status_code == 409
 
 
+def test_login_rejects_invalid_password_and_me_returns_authenticated_user(client):
+    headers = auth_headers(client)
+    invalid_login = client.post(
+        "/api/auth/login",
+        json={"email": "owner@example.com", "password": "senha-errada"},
+    )
+    assert invalid_login.status_code == 401
+
+    profile = client.get("/api/auth/me", headers=headers)
+    assert profile.status_code == 200
+    assert profile.json()["email"] == "owner@example.com"
+
+
 def test_authentication_requests_are_rate_limited(client, monkeypatch):
     monkeypatch.setattr(settings, "auth_rate_limit_per_minute", 1)
     credentials = {"email": "missing@example.com", "password": "senha-segura-123"}
@@ -119,6 +132,123 @@ def test_upload_list_and_delete_document(client):
         headers=headers,
     )
     assert deleted.status_code == 204
+    assert client.get(f"/api/bots/{bot['id']}/documents", headers=headers).json() == []
+
+
+def test_documents_are_private_to_the_bot_owner(client):
+    owner_headers = auth_headers(client, "document-owner@example.com")
+    other_headers = auth_headers(client, "document-other@example.com")
+    bot = client.post(
+        "/api/bots",
+        headers=owner_headers,
+        json={"name": "Base privada"},
+    ).json()
+    document = client.post(
+        f"/api/bots/{bot['id']}/documents",
+        headers=owner_headers,
+        files={"file": ("privado.txt", b"Informacao privada.", "text/plain")},
+    ).json()
+
+    assert client.get(
+        f"/api/bots/{bot['id']}/documents",
+        headers=other_headers,
+    ).status_code == 404
+    assert client.post(
+        f"/api/bots/{bot['id']}/documents",
+        headers=other_headers,
+        files={"file": ("outro.txt", b"Outro conteudo.", "text/plain")},
+    ).status_code == 404
+    assert client.delete(
+        f"/api/bots/{bot['id']}/documents/{document['id']}",
+        headers=other_headers,
+    ).status_code == 404
+    assert client.get(
+        f"/api/bots/{bot['id']}/documents",
+        headers=owner_headers,
+    ).json() == [{"id": document["id"], "name": "privado.txt"}]
+
+
+def test_uploaded_document_is_used_in_chat_and_deleted_content_is_not_retrieved(
+    client, monkeypatch
+):
+    headers = auth_headers(client)
+    bot = client.post(
+        "/api/bots",
+        headers=headers,
+        json={"name": "Assistente com documentos"},
+    ).json()
+    uploaded = client.post(
+        f"/api/bots/{bot['id']}/documents",
+        headers=headers,
+        files={
+            "file": (
+                "horarios.txt",
+                "A cafeteria abre às 9 horas. Fecha às 18 horas.".encode(),
+                "text/plain",
+            )
+        },
+    )
+    assert uploaded.status_code == 201
+    observed_contexts = []
+
+    async def capture_context(instructions, question, context):
+        observed_contexts.append(context)
+        return "Resposta de teste"
+
+    monkeypatch.setattr("app.main.generate_answer", capture_context)
+    payload = {"message": "Qual o horario da cafeteria?", "visitor_id": "visitor-doc"}
+    chat = client.post(f"/api/public/bots/{bot['id']}/chat", json=payload)
+
+    assert chat.status_code == 200
+    assert observed_contexts == ["A cafeteria abre às 9 horas."]
+    conversation = client.get(
+        f"/api/bots/{bot['id']}/conversations",
+        headers=headers,
+    ).json()
+    assert {
+        message["role"]: message["content"]
+        for message in conversation[0]["messages"]
+    } == {
+        "user": payload["message"],
+        "assistant": "Resposta de teste",
+    }
+
+    deleted = client.delete(
+        f"/api/bots/{bot['id']}/documents/{uploaded.json()['id']}",
+        headers=headers,
+    )
+    assert deleted.status_code == 204
+    continued = client.post(
+        f"/api/public/bots/{bot['id']}/chat",
+        json={
+            **payload,
+            "message": "Qual o horario da cafeteria?",
+            "conversation_id": chat.json()["conversation_id"],
+        },
+    )
+
+    assert continued.status_code == 200
+    assert observed_contexts == ["A cafeteria abre às 9 horas.", ""]
+
+
+def test_document_upload_rejects_unsupported_and_oversized_files(client, monkeypatch):
+    headers = auth_headers(client)
+    bot = client.post("/api/bots", headers=headers, json={"name": "Uploads"}).json()
+
+    unsupported = client.post(
+        f"/api/bots/{bot['id']}/documents",
+        headers=headers,
+        files={"file": ("arquivo.exe", b"conteudo", "application/octet-stream")},
+    )
+    assert unsupported.status_code == 415
+
+    monkeypatch.setattr(settings, "max_document_bytes", 4)
+    oversized = client.post(
+        f"/api/bots/{bot['id']}/documents",
+        headers=headers,
+        files={"file": ("grande.txt", b"cinco!", "text/plain")},
+    )
+    assert oversized.status_code == 413
     assert client.get(f"/api/bots/{bot['id']}/documents", headers=headers).json() == []
 
 

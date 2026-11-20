@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     max_message_length: int = 4000
     max_document_bytes: int = 5 * 1024 * 1024
+    max_document_characters: int = Field(default=500_000, gt=0)
     auth_rate_limit_per_minute: int = Field(default=10, gt=0)
     public_chat_rate_limit_per_minute: int = Field(default=20, gt=0)
     public_chat_daily_limit_per_bot: int = Field(default=500, gt=0)

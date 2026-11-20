@@ -1,18 +1,16 @@
 from contextlib import asynccontextmanager
-from io import BytesIO
 from pathlib import Path
-import re
 
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
-from pypdf import PdfReader
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.ai import AIProviderError, generate_answer, relevant_context
 from app.auth import create_token, get_current_user, get_db, hash_password, verify_password
 from app.config import settings
+from app.documents import DocumentProcessingError, extract_document_text
 from app.models import Base, Chatbot, Conversation, KnowledgeDocument, Message, SessionLocal, User, engine
 from app.schemas import BotCreate, BotOut, BotUpdate, ChatOut, ChatRequest, Credentials, TokenOut, UserOut
 from app.rate_limit import client_address, consume_rate_limit
@@ -155,22 +153,19 @@ def delete_bot(bot_id: int, user: User = Depends(get_current_user), db: Session 
 async def upload_document(bot_id: int, file: UploadFile = File(...), user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     bot = owned_bot(bot_id, user.id, db)
     data = await file.read(settings.max_document_bytes + 1)
-    if len(data) > settings.max_document_bytes:
-        raise HTTPException(status_code=413, detail="O arquivo excede o limite de 5 MB")
     filename = file.filename or "documento.txt"
-    if filename.lower().endswith(".pdf") or file.content_type == "application/pdf":
-        try:
-            text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(data)).pages)
-        except Exception as exc:
-            raise HTTPException(status_code=422, detail="Não foi possível ler o PDF") from exc
-    elif filename.lower().endswith((".txt", ".md", ".csv")):
-        text = data.decode("utf-8-sig", errors="replace")
-    else:
-        raise HTTPException(status_code=415, detail="Formato não suportado. Envie PDF, TXT, MD ou CSV.")
-    text = re.sub(r"\s+", " ", text).strip()
-    if not text:
-        raise HTTPException(status_code=422, detail="O arquivo não contém texto extraível")
-    doc = KnowledgeDocument(bot_id=bot.id, name=filename[:255], content=text[:500_000])
+    try:
+        text = extract_document_text(
+            filename=filename,
+            content_type=file.content_type,
+            data=data,
+            max_upload_bytes=settings.max_document_bytes,
+            max_text_characters=settings.max_document_characters,
+        )
+    except DocumentProcessingError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    doc = KnowledgeDocument(bot_id=bot.id, name=filename[:255], content=text)
     db.add(doc)
     db.commit()
     db.refresh(doc)

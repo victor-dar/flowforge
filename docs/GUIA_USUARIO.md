@@ -26,7 +26,7 @@ Instruções claras e informações atuais ajudam o assistente, mas não garante
 2. Selecione PDF, TXT, MD ou CSV de até 5 MB.
 3. Aguarde a confirmação. O texto extraído é usado pela busca lexical.
 
-PDFs digitalizados sem camada de texto podem não produzir conteúdo utilizável. Evite enviar informações pessoais ou confidenciais sem revisar as políticas do seu ambiente.
+O texto extraído também tem limite de 500.000 caracteres por documento. Arquivos acima de qualquer limite são rejeitados integralmente. PDFs digitalizados sem camada de texto e arquivos vazios não são aceitos; falhas de extração são mostradas como erro. Evite enviar informações pessoais ou confidenciais sem revisar as políticas do seu ambiente.
 
 ## 4. Testar
 
@@ -57,4 +57,4 @@ Use **Excluir** no assistente e confirme. O backend exclui o chatbot e os dados 
 | Cadastro não responde | Confirme que API e painel estão ativos; veja a aba Network/console do navegador |
 | Erro de CORS | Confira `CORS_ORIGINS` e a origem exata do painel |
 | Chat indisponível | Confira conectividade/configuração do provedor e limites de requisição |
-| Documento rejeitado | Verifique formato, limite de 5 MB e se há texto extraível |
+| Documento rejeitado | Verifique formato, limite de 5 MB, limite de caracteres e se há texto UTF-8 extraível |

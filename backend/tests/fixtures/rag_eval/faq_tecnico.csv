@@ -1,0 +1,4 @@
+assunto,resposta
+"Autenticação da API","Envie o token de acesso no cabeçalho Authorization usando o esquema Bearer."
+"Tentativas de webhook","Em caso de falha, o sistema tenta entregar o webhook novamente até três vezes, com intervalo de sessenta segundos."
+"Formato de data","As datas da API usam o padrão ISO 8601 em UTC."

@@ -16,6 +16,34 @@ type Message = { role: string; content: string }
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
+
+function errorMessage(error: unknown) {
+  if (error instanceof TypeError) {
+    return 'Não foi possível conectar à API. Verifique se o servidor está ativo e tente novamente.'
+  }
+  return error instanceof Error ? error.message : 'Ocorreu um erro inesperado.'
+}
+
+function responseError(data: { detail?: unknown }, fallback: string) {
+  if (typeof data.detail === 'string') return data.detail
+  if (Array.isArray(data.detail)) {
+    return data.detail
+      .map((item) => (item && typeof item === 'object' && 'msg' in item ? String(item.msg) : ''))
+      .filter(Boolean)
+      .join(' ')
+  }
+  return fallback
+}
+
 async function request(path: string, token: string, init: RequestInit = {}) {
   const response = await fetch(`${API}${path}`, {
     ...init,
@@ -28,7 +56,10 @@ async function request(path: string, token: string, init: RequestInit = {}) {
 
   if (!response.ok) {
     const result = await response.json().catch(() => ({}))
-    throw new Error(result.detail || 'Não foi possível concluir a operação.')
+    throw new ApiError(
+      responseError(result, 'Não foi possível concluir a operação.'),
+      response.status,
+    )
   }
 
   return response.status === 204 ? null : response.json()
@@ -65,11 +96,27 @@ export default function App() {
     }
   }
 
+  const logout = () => {
+    localStorage.removeItem('flowforge-token')
+    setToken('')
+    setEmail('')
+    setPassword('')
+    setBots([])
+    setSelected(null)
+    setMessages([])
+    setConversation(null)
+    setError('')
+  }
+
   useEffect(() => {
     if (token) {
-      refresh().catch(() => {
-        localStorage.removeItem('flowforge-token')
-        setToken('')
+      refresh().catch((error: unknown) => {
+        // Clear credentials only when the server rejects them; network errors are recoverable.
+        if (error instanceof ApiError && error.status === 401) {
+          logout()
+        } else {
+          setError('Não foi possível carregar seus assistentes. Verifique a conexão com a API e tente novamente.')
+        }
       })
     }
   }, [token])
@@ -85,16 +132,17 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
-      const result = await data.json()
+      const result = await data.json().catch(() => ({}))
 
       if (!data.ok) {
-        throw new Error(result.detail || 'Falha ao entrar')
+        throw new ApiError(responseError(result, 'Falha ao entrar.'), data.status)
       }
 
       localStorage.setItem('flowforge-token', result.access_token)
+      setEmail(result.user.email)
       setToken(result.access_token)
     } catch (e) {
-      setError((e as Error).message)
+      setError(errorMessage(e))
     } finally {
       setBusy(false)
     }
@@ -122,7 +170,7 @@ export default function App() {
       setNewBotName('')
       openBot(bot)
     } catch (e) {
-      setError((e as Error).message)
+      setError(errorMessage(e))
     }
   }
 
@@ -142,7 +190,7 @@ export default function App() {
       setSaveState('saved')
       window.setTimeout(() => setSaveState('idle'), 1400)
     } catch (e) {
-      setError((e as Error).message)
+      setError(errorMessage(e))
       setSaveState('idle')
     }
   }
@@ -155,7 +203,7 @@ export default function App() {
       setBots((current) => current.filter((item) => item.id !== bot.id))
       if (selected?.id === bot.id) setSelected(null)
     } catch (e) {
-      setError((e as Error).message)
+      setError(errorMessage(e))
     }
   }
 
@@ -187,7 +235,7 @@ export default function App() {
       setConversation(result.conversation_id)
       setMessages((current) => [...current, { role: 'assistant', content: result.answer }])
     } catch (e) {
-      setMessages((current) => [...current, { role: 'assistant', content: (e as Error).message }])
+      setMessages((current) => [...current, { role: 'assistant', content: errorMessage(e) }])
     } finally {
       setBusy(false)
     }
@@ -203,7 +251,7 @@ export default function App() {
       await request(`/api/bots/${selected.id}/documents`, token, { method: 'POST', body: form })
       await refresh()
     } catch (e) {
-      setError((e as Error).message)
+      setError(errorMessage(e))
     }
   }
 
@@ -343,11 +391,7 @@ export default function App() {
 
           <button
             className="profile"
-            onClick={() => {
-              localStorage.removeItem('flowforge-token')
-              setToken('')
-              setSelected(null)
-            }}
+            onClick={logout}
           >
             <span className="avatar">{email?.[0]?.toUpperCase() || 'U'}</span>
             <span>

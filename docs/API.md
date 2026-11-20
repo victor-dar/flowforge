@@ -52,7 +52,7 @@ Todas as rotas exigem JWT:
 | `DELETE` | `/api/bots/{bot_id}/documents/{document_id}` | Excluir documento (`204`) |
 | `GET` | `/api/bots/{bot_id}/conversations` | Listar até 100 conversas e mensagens |
 
-`BotCreate` e `BotUpdate` aceitam nome, empresa, descrição, instruções, boas-vindas e cor hexadecimal. O limite de upload padrão é 5 MB; extensões aceitas: PDF, TXT, MD e CSV.
+`BotCreate` e `BotUpdate` aceitam nome, empresa, descrição, instruções, boas-vindas e cor hexadecimal. Extensões aceitas para documentos: PDF, TXT, MD e CSV. O upload padrão limita os bytes a 5 MB (`MAX_DOCUMENT_BYTES`) e o texto extraído a 500.000 caracteres (`MAX_DOCUMENT_CHARACTERS`). Ultrapassar um limite retorna `413` e não persiste documento parcial; arquivo sem texto ou falha de extração retorna `422`.
 
 ## Rotas públicas de chat
 
