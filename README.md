@@ -35,6 +35,8 @@ FlowForge é um projeto open source em estágio de MVP para configurar chatbots 
 - Busca híbrida: recuperação lexical local e embeddings opcionais da OpenAI.
 - Chunking persistente e histórico limitado nas conversas enviadas ao modelo.
 - Domínios autorizados configuráveis por assistente para o widget público.
+- Gerenciamento visual de documentos com metadados, estados de upload e exclusão.
+- Checklist de publicação e interface responsiva para desktop e dispositivos móveis.
 - Respostas diferentes para saudações e perguntas sem contexto no modo sem provedor de IA.
 - Teste de conversa no painel e histórico acessível pela API.
 - Widget incorporável em sites por meio de um snippet JavaScript.

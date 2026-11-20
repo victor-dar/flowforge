@@ -20,6 +20,7 @@ const existingBot = {
   instructions: 'Seja útil.',
   welcome_message: 'Olá!',
   color: '#6d5dfc',
+  allowed_domains: [],
   created_at: '2026-01-01T00:00:00',
   document_count: 0,
 }
@@ -100,6 +101,46 @@ describe('FlowForge authentication session', () => {
 
     expect(screen.getByRole('heading', { name: 'Bem-vindo de volta' })).toBeInTheDocument()
     expect(screen.queryByText(existingBot.name)).not.toBeInTheDocument()
+  })
+
+  it('lists and deletes documents in the knowledge base', async () => {
+    const user = userEvent.setup()
+    let documentDeleted = false
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      const url = String(input)
+      if (url.includes('/api/auth/me')) {
+        return jsonResponse({ id: 7, email: 'owner@example.com' })
+      }
+      if (url.includes('/documents/1') && init?.method === 'DELETE') {
+        documentDeleted = true
+        return jsonResponse(null, 204)
+      }
+      if (url.includes('/documents')) {
+        if (documentDeleted) return jsonResponse([])
+        return jsonResponse([
+          {
+            id: 1,
+            name: 'manual.txt',
+            size_chars: 120,
+            created_at: '2026-11-20T12:00:00',
+          },
+        ])
+      }
+      return jsonResponse([{ ...existingBot, document_count: 1 }])
+    })
+
+    render(<App />)
+
+    await user.click((await screen.findAllByText(existingBot.name))[0])
+    await user.click(screen.getByRole('button', { name: /Base de conhecimento/i }))
+    expect(await screen.findByText('manual.txt')).toBeInTheDocument()
+    expect(screen.getByText(/120 caracteres/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Excluir documento manual.txt' }))
+    await waitFor(() => {
+      expect(screen.queryByText('manual.txt')).not.toBeInTheDocument()
+    })
   })
 
   it('keeps the user authenticated when loading bots fails due to a network error', async () => {

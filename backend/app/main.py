@@ -353,7 +353,15 @@ def list_documents(bot_id: int, user: User = Depends(get_current_user), db: Sess
         .where(KnowledgeDocument.bot_id == bot_id)
         .order_by(KnowledgeDocument.id)
     ).all()
-    return [{"id": document.id, "name": document.name} for document in documents]
+    return [
+        {
+            "id": document.id,
+            "name": document.name,
+            "size_chars": len(document.content),
+            "created_at": document.created_at.isoformat() if document.created_at else "",
+        }
+        for document in documents
+    ]
 
 
 @app.patch("/api/bots/{bot_id}", response_model=BotOut)

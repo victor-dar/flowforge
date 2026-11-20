@@ -138,7 +138,11 @@ def test_upload_list_and_delete_document(client):
 
     listed = client.get(f"/api/bots/{bot['id']}/documents", headers=headers)
     assert listed.status_code == 200
-    assert listed.json() == [{"id": document["id"], "name": "guia.txt"}]
+    assert len(listed.json()) == 1
+    assert listed.json()[0]["id"] == document["id"]
+    assert listed.json()[0]["name"] == "guia.txt"
+    assert listed.json()[0]["size_chars"] == len("Conteudo do documento.")
+    assert listed.json()[0]["created_at"]
 
     deleted = client.delete(
         f"/api/bots/{bot['id']}/documents/{document['id']}",
@@ -175,10 +179,14 @@ def test_documents_are_private_to_the_bot_owner(client):
         f"/api/bots/{bot['id']}/documents/{document['id']}",
         headers=other_headers,
     ).status_code == 404
-    assert client.get(
+    listed = client.get(
         f"/api/bots/{bot['id']}/documents",
         headers=owner_headers,
-    ).json() == [{"id": document["id"], "name": "privado.txt"}]
+    ).json()
+    assert len(listed) == 1
+    assert listed[0]["id"] == document["id"]
+    assert listed[0]["name"] == "privado.txt"
+    assert listed[0]["size_chars"] == len("Informacao privada.")
 
 
 def test_uploaded_document_is_used_in_chat_and_deleted_content_is_not_retrieved(

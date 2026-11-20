@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import './style.css'
+import './p0.css'
 
 type Bot = {
   id: number
@@ -14,6 +15,12 @@ type Bot = {
 }
 
 type Message = { role: string; content: string }
+type DocumentItem = {
+  id: number
+  name: string
+  size_chars: number
+  created_at: string
+}
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -84,6 +91,20 @@ export default function App() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [newBotName, setNewBotName] = useState('')
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [documents, setDocuments] = useState<DocumentItem[]>([])
+  const [documentsLoading, setDocumentsLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
+
+  const loadDocuments = async (botId: number) => {
+    setDocumentsLoading(true)
+    try {
+      setDocuments(await request(`/api/bots/${botId}/documents`))
+    } catch (e) {
+      setError(errorMessage(e))
+    } finally {
+      setDocumentsLoading(false)
+    }
+  }
 
   const refresh = async () => {
     setLoading(true)
@@ -136,6 +157,12 @@ export default function App() {
     }
   }, [authenticated])
 
+  useEffect(() => {
+    if (selected && tab === 'knowledge') {
+      void loadDocuments(selected.id)
+    }
+  }, [selected?.id, tab])
+
   const auth = async (event: FormEvent) => {
     event.preventDefault()
     setBusy(true)
@@ -168,6 +195,8 @@ export default function App() {
     setTab('overview')
     setMessages([])
     setConversation(null)
+    setDocuments([])
+    void loadDocuments(bot.id)
   }
 
   const createBot = async () => {
@@ -260,12 +289,40 @@ export default function App() {
   const upload = async (file?: File) => {
     if (!file || !selected) return
 
+    const allowedExtensions = ['pdf', 'txt', 'md', 'csv']
+    const extension = file.name.split('.').pop()?.toLowerCase()
+    if (!extension || !allowedExtensions.includes(extension)) {
+      setError('Formato não suportado. Envie PDF, TXT, MD ou CSV.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('O arquivo excede o limite de 5 MB.')
+      return
+    }
+
     const form = new FormData()
     form.append('file', file)
+    setUploading(true)
 
     try {
       await request(`/api/bots/${selected.id}/documents`, { method: 'POST', body: form })
       await refresh()
+      await loadDocuments(selected.id)
+      setError('')
+    } catch (e) {
+      setError(errorMessage(e))
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const removeDocument = async (document: DocumentItem) => {
+    if (!selected || !window.confirm(`Excluir o documento “${document.name}”?`)) return
+
+    try {
+      await request(`/api/bots/${selected.id}/documents/${document.id}`, { method: 'DELETE' })
+      await refresh()
+      await loadDocuments(selected.id)
     } catch (e) {
       setError(errorMessage(e))
     }
@@ -647,20 +704,47 @@ export default function App() {
                 <h2>Ensine seu assistente</h2>
                 <p className="muted">Adicione documentos para que o chatbot responda com informações do seu negócio. PDF, TXT, MD e CSV (máx. 5 MB).</p>
 
-                <label className="upload-zone">
+                <label className="upload-zone" aria-busy={uploading}>
                   <span className="upload-icon">↑</span>
-                  <strong>Arraste arquivos ou clique para selecionar</strong>
+                  <strong>{uploading ? 'Enviando documento…' : 'Arraste arquivos ou clique para selecionar'}</strong>
                   <small>PDF, TXT, MD ou CSV • até 5 MB</small>
-                  <input type="file" accept=".pdf,.txt,.md,.csv,application/pdf" onChange={(e) => upload(e.target.files?.[0])} />
+                  <input
+                    type="file"
+                    accept=".pdf,.txt,.md,.csv,application/pdf"
+                    disabled={uploading}
+                    onChange={(e) => upload(e.target.files?.[0])}
+                  />
                 </label>
 
                 <div className="doc-list">
                   <div className="doc-row">
                     <span>▤</span>
                     <strong>Documentos carregados</strong>
-                    <span>{selected.document_count}</span>
+                    <span>{documentsLoading ? 'Carregando…' : documents.length}</span>
                   </div>
-                  {!selected.document_count && <p className="muted">Seus arquivos aparecerão aqui após o envio.</p>}
+                  {!documentsLoading && documents.length === 0 && (
+                    <p className="muted">Nenhum documento enviado. Adicione arquivos para ensinar o assistente.</p>
+                  )}
+                  {documents.map((document) => (
+                    <div className="document-row" key={document.id}>
+                      <span className="document-icon">▤</span>
+                      <div>
+                        <strong>{document.name}</strong>
+                        <small>
+                          {document.size_chars.toLocaleString('pt-BR')} caracteres
+                          {document.created_at ? ` • ${new Date(document.created_at).toLocaleDateString('pt-BR')}` : ''}
+                        </small>
+                      </div>
+                      <button
+                        type="button"
+                        className="danger document-delete"
+                        onClick={() => removeDocument(document)}
+                        aria-label={`Excluir documento ${document.name}`}
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -716,6 +800,22 @@ export default function App() {
                 </p>
                 <pre>{`<script src="${API}/widget.js" data-bot-id="${selected.id}" defer></script>`}</pre>
                 <p className="muted">O widget pode ser testado após iniciar a API. Configure a URL pública da API em VITE_API_URL.</p>
+
+                <div className="publish-checklist">
+                  <h3>Checklist de publicação</h3>
+                  {[
+                    { label: 'Nome do assistente configurado', done: selected.name.trim().length > 0 },
+                    { label: 'Mensagem de boas-vindas configurada', done: selected.welcome_message.trim().length > 0 },
+                    { label: 'Instruções adicionadas', done: selected.instructions.trim().length > 0 },
+                    { label: 'Base de conhecimento com documentos', done: documents.length > 0 },
+                    { label: 'Domínios do widget configurados', done: (selected.allowed_domains || []).length > 0 },
+                  ].map((item) => (
+                    <div className={`checklist-item ${item.done ? 'done' : ''}`} key={item.label}>
+                      <span aria-hidden="true">{item.done ? '✓' : '○'}</span>
+                      <strong>{item.label}</strong>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </section>

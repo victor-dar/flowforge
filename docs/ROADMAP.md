@@ -14,10 +14,10 @@ O roadmap separa o que já existe no código do trabalho recomendado. Prioridade
 - [x] Migrações de banco com Alembic
 - [x] Observabilidade inicial com logs JSON e métricas
 - [x] Métricas operacionais protegidas por autenticação
-- [ ] Completar visualização e gerenciamento de documentos no painel
-- [ ] Adicionar fluxo guiado de configuração e checklist de publicação
-- [ ] Exibir erros, limites e estado do serviço com feedback consistente
-- [ ] Validar acessibilidade e layout em dispositivos móveis
+- [x] Completar visualização e gerenciamento de documentos no painel
+- [x] Adicionar fluxo guiado de configuração e checklist de publicação
+- [x] Exibir erros, limites e estado do serviço com feedback consistente
+- [x] Validar acessibilidade e layout em dispositivos móveis
 
 ## P1 — Confiabilidade e segurança operacional
 
