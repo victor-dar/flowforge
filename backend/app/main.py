@@ -12,7 +12,7 @@ from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.ai import (
@@ -24,11 +24,14 @@ from app.ai import (
 )
 from app.auth import (
     create_token,
+    create_action_token,
+    decode_action_token,
     get_current_user,
     get_optional_user,
     get_db,
     hash_password,
     verify_password,
+    send_mail,
 )
 from app.config import settings
 from app.documents import DocumentProcessingError, extract_document_text
@@ -43,7 +46,19 @@ from app.models import (
     User,
     engine,
 )
-from app.schemas import BotCreate, BotOut, BotUpdate, ChatOut, ChatRequest, Credentials, TokenOut, UserOut
+from app.schemas import (
+    BotCreate,
+    BotOut,
+    BotUpdate,
+    ChatOut,
+    ChatRequest,
+    Credentials,
+    EmailRequest,
+    PasswordResetRequest,
+    VerifyEmailRequest,
+    TokenOut,
+    UserOut,
+)
 from app.rate_limit import client_address, consume_rate_limit
 from app.widget_page import WIDGET_HTML
 
@@ -63,6 +78,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         started = perf_counter()
         response = await call_next(request)
+        bucket = "5xx" if response.status_code >= 500 else "4xx" if response.status_code >= 400 else "2xx"
+        _status_counts[bucket] += 1
         logging.getLogger("flowforge.request").info(
             json.dumps(
                 {
@@ -78,6 +95,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(RequestLoggingMiddleware)
+
+_started_at = perf_counter()
+_status_counts: dict[str, int] = {"2xx": 0, "4xx": 0, "5xx": 0}
 
 
 def bot_output(bot: Chatbot) -> BotOut:
@@ -159,6 +179,20 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/health/live")
+def liveness():
+    return {"status": "alive"}
+
+
+@app.get("/health/ready")
+def readiness(db: Session = Depends(get_db)):
+    try:
+        db.execute(select(1))
+        return {"status": "ready"}
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Banco de dados indisponível") from exc
+
+
 @app.get("/metrics")
 @app.get("/api/metrics")
 def metrics(
@@ -176,6 +210,8 @@ def metrics(
         "documents": document_count,
         "conversations": conversation_count,
         "messages": message_count,
+        "uptime_seconds": round(perf_counter() - _started_at, 2),
+        "http_status_counts": dict(_status_counts),
     }
 
 
@@ -318,9 +354,163 @@ def logout(response: Response):
     return {"status": "ok"}
 
 
+@app.post("/api/auth/verify/request")
+def request_email_verification(data: EmailRequest, request: Request, db: Session = Depends(get_db)):
+    address = client_address(request.client.host if request.client else None)
+    consume_rate_limit(db, f"email-verification:{address}", settings.auth_rate_limit_per_minute, 60)
+    user = db.scalar(select(User).where(User.email == data.email.lower()))
+    if user:
+        token = create_action_token(user.id, "email-verification", 1440)
+        link = f"{settings.app_public_url.rstrip('/')}/api/auth/verify/confirm?token={token}"
+        if not send_mail(user.email, "Verifique seu e-mail no FlowForge", f"Acesse: {link}"):
+            logger = logging.getLogger("flowforge.auth")
+            logger.info("Email verification link generated for %s", user.email)
+    return {"status": "Se o e-mail estiver cadastrado, enviaremos instruções de verificação."}
+
+
+@app.post("/api/auth/verify/confirm")
+def confirm_email_verification(data: VerifyEmailRequest, db: Session = Depends(get_db)):
+    try:
+        user_id = decode_action_token(data.token, "email-verification")
+    except (jwt.PyJWTError, TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Token de verificação inválido ou expirado") from None
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=400, detail="Token de verificação inválido ou expirado")
+    user.email_verified = True
+    db.commit()
+    return {"status": "E-mail verificado"}
+
+
+@app.get("/api/auth/verify/confirm")
+def confirm_email_verification_from_link(token: str, db: Session = Depends(get_db)):
+    return confirm_email_verification(VerifyEmailRequest(token=token), db)
+
+
+@app.post("/api/auth/password/reset/request")
+def request_password_reset(data: EmailRequest, request: Request, db: Session = Depends(get_db)):
+    address = client_address(request.client.host if request.client else None)
+    consume_rate_limit(db, f"password-reset:{address}", settings.auth_rate_limit_per_minute, 60)
+    user = db.scalar(select(User).where(User.email == data.email.lower()))
+    if user:
+        token = create_action_token(user.id, "password-reset", 30)
+        link = f"{settings.app_public_url.rstrip('/')}/api/auth/password/reset/confirm?token={token}"
+        if not send_mail(user.email, "Redefinição de senha no FlowForge", f"Acesse: {link}"):
+            logging.getLogger("flowforge.auth").info("Password reset link generated for %s", user.email)
+    return {"status": "Se o e-mail estiver cadastrado, enviaremos instruções de recuperação."}
+
+
+@app.post("/api/auth/password/reset/confirm")
+def confirm_password_reset(data: PasswordResetRequest, db: Session = Depends(get_db)):
+    try:
+        user_id = decode_action_token(data.token, "password-reset")
+    except (jwt.PyJWTError, TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Token de recuperação inválido ou expirado") from None
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=400, detail="Token de recuperação inválido ou expirado")
+    user.password_hash = hash_password(data.password)
+    db.commit()
+    return {"status": "Senha redefinida"}
+
+
+@app.get("/api/auth/password/reset/confirm")
+def validate_password_reset_link(token: str):
+    try:
+        decode_action_token(token, "password-reset")
+    except (jwt.PyJWTError, TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Token de recuperação inválido ou expirado") from None
+    return {"status": "Token válido"}
+
+
 @app.get("/api/auth/me", response_model=UserOut)
 def me(user: User = Depends(get_current_user)):
     return user
+
+
+@app.get("/api/account/export")
+def export_account(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    bots = db.scalars(
+        select(Chatbot)
+        .options(
+            selectinload(Chatbot.documents).selectinload(KnowledgeDocument.chunks),
+            selectinload(Chatbot.conversations).selectinload(Conversation.messages),
+        )
+        .where(Chatbot.owner_id == user.id)
+        .order_by(Chatbot.id)
+    ).all()
+    return {
+        "user": {"id": user.id, "email": user.email, "created_at": user.created_at.isoformat() if user.created_at else ""},
+        "bots": [
+            {
+                "id": bot.id,
+                "name": bot.name,
+                "business_name": bot.business_name,
+                "description": bot.description,
+                "instructions": bot.instructions,
+                "welcome_message": bot.welcome_message,
+                "color": bot.color,
+                "allowed_domains": [
+                    domain.strip()
+                    for domain in (bot.allowed_domains or "").split(",")
+                    if domain.strip()
+                ],
+                "documents": [
+                    {
+                        "id": document.id,
+                        "name": document.name,
+                        "content": document.content,
+                        "created_at": document.created_at.isoformat() if document.created_at else "",
+                    }
+                    for document in bot.documents
+                ],
+                "conversations": [
+                    {
+                        "id": conversation.id,
+                        "visitor_id": conversation.visitor_id,
+                        "created_at": conversation.created_at.isoformat() if conversation.created_at else "",
+                        "messages": [
+                            {
+                                "role": message.role,
+                                "content": message.content,
+                                "created_at": message.created_at.isoformat() if message.created_at else "",
+                            }
+                            for message in conversation.messages
+                        ],
+                    }
+                    for conversation in bot.conversations
+                ],
+            }
+            for bot in bots
+        ],
+    }
+
+
+@app.delete("/api/account", status_code=204)
+def delete_account(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    db.delete(user)
+    db.commit()
+    return Response(status_code=204)
+
+
+@app.post("/api/account/retention/cleanup")
+def apply_retention(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    cutoff = datetime.now(timezone.utc) - timedelta(days=settings.retention_days)
+    bot_ids = db.scalars(select(Chatbot.id).where(Chatbot.owner_id == user.id)).all()
+    deleted = 0
+    for bot_id in bot_ids:
+        result = db.execute(
+            delete(Conversation).where(
+                Conversation.bot_id == bot_id,
+                Conversation.created_at < cutoff,
+            )
+        )
+        deleted += result.rowcount or 0
+    db.commit()
+    return {"deleted_conversations": deleted, "retention_days": settings.retention_days}
 
 
 @app.get("/api/bots", response_model=list[BotOut])

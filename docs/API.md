@@ -14,6 +14,8 @@ A especificação OpenAPI interativa gerada pelo FastAPI está disponível em `/
 | Método | Rota | Acesso | Descrição |
 |---|---|---|---|
 | `GET` | `/health` | Público | Verificação básica de processo; não verifica banco/provedor |
+| `GET` | `/health/live` | Público | Confirma que o processo está vivo |
+| `GET` | `/health/ready` | Público | Confirma que a API consegue acessar o banco |
 | `GET` | `/metrics` ou `/api/metrics` | Autenticado | Contagens básicas de usuários, assistentes, documentos e conversas |
 | `GET` | `/widget.js` | Público | Script incorporável |
 | `GET` | `/widget` | Público | Página do iframe |
@@ -26,6 +28,13 @@ A especificação OpenAPI interativa gerada pelo FastAPI está disponível em `/
 | `POST` | `/api/auth/login` | Validar credenciais e emitir JWT |
 | `GET` | `/api/auth/me` | Retornar o usuário autenticado |
 | `POST` | `/api/auth/logout` | Remover o cookie de autenticação |
+| `POST` | `/api/auth/verify/request` | Solicitar verificação de e-mail |
+| `GET`, `POST` | `/api/auth/verify/confirm` | Confirmar verificação pelo token |
+| `POST` | `/api/auth/password/reset/request` | Solicitar recuperação de senha |
+| `GET`, `POST` | `/api/auth/password/reset/confirm` | Validar ou aplicar o token de recuperação |
+| `GET` | `/api/account/export` | Exportar os dados do usuário (`200`) |
+| `DELETE` | `/api/account` | Excluir usuário e dados associados (`204`) |
+| `POST` | `/api/account/retention/cleanup` | Remover conversas antigas segundo `RETENTION_DAYS` |
 
 Exemplo:
 

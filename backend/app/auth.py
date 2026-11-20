@@ -3,6 +3,8 @@ import binascii
 import hashlib
 import hmac
 import secrets
+import smtplib
+from email.message import EmailMessage
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -68,6 +70,46 @@ def create_token(user_id: int) -> str:
         settings.secret_key,
         algorithm="HS256",
     )
+
+
+def create_action_token(user_id: int, purpose: str, minutes: int) -> str:
+    return jwt.encode(
+        {
+            "sub": str(user_id),
+            "purpose": purpose,
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=minutes),
+        },
+        settings.secret_key,
+        algorithm="HS256",
+    )
+
+
+def decode_action_token(token: str, purpose: str) -> int:
+    claims = jwt.decode(
+        token,
+        settings.secret_key,
+        algorithms=["HS256"],
+        options={"require": ["exp", "sub", "purpose"]},
+    )
+    if claims["purpose"] != purpose:
+        raise jwt.InvalidTokenError("Purpose mismatch")
+    return int(claims["sub"])
+
+
+def send_mail(to_email: str, subject: str, body: str) -> bool:
+    if not settings.smtp_host:
+        return False
+    message = EmailMessage()
+    message["From"] = settings.smtp_from
+    message["To"] = to_email
+    message["Subject"] = subject
+    message.set_content(body)
+    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as smtp:
+        smtp.starttls()
+        if settings.smtp_user:
+            smtp.login(settings.smtp_user, settings.smtp_password or "")
+        smtp.send_message(message)
+    return True
 
 
 def get_current_user(

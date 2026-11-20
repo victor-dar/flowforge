@@ -6,10 +6,24 @@ class Credentials(BaseModel):
     password: str = Field(min_length=8, max_length=128)
 
 
+class EmailRequest(BaseModel):
+    email: EmailStr
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str = Field(min_length=20, max_length=4096)
+
+
+class PasswordResetRequest(BaseModel):
+    token: str = Field(min_length=20, max_length=4096)
+    password: str = Field(min_length=8, max_length=128)
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     email: str
+    email_verified: bool = False
 
 
 class TokenOut(BaseModel):

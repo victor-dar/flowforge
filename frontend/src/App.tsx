@@ -251,6 +251,32 @@ export default function App() {
     }
   }
 
+  const exportAccount = async () => {
+    try {
+      const data = await request('/api/account/export')
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `flowforge-dados-${new Date().toISOString().slice(0, 10)}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setError(errorMessage(e))
+    }
+  }
+
+  const removeAccount = async () => {
+    if (!window.confirm('Excluir sua conta e todos os assistentes, documentos e conversas? Esta ação não pode ser desfeita.')) return
+
+    try {
+      await request('/api/account', { method: 'DELETE' })
+      logout()
+    } catch (e) {
+      setError(errorMessage(e))
+    }
+  }
+
   const send = async (event: FormEvent) => {
     event.preventDefault()
     if (!selected || !question.trim()) return
@@ -481,6 +507,14 @@ export default function App() {
             </span>
             <span className="chevron">↗</span>
           </button>
+          <div className="account-actions">
+            <button type="button" className="secondary" onClick={exportAccount}>
+              Exportar dados
+            </button>
+            <button type="button" className="danger" onClick={removeAccount}>
+              Excluir conta
+            </button>
+          </div>
         </div>
       </aside>
 

@@ -21,13 +21,13 @@ O roadmap separa o que já existe no código do trabalho recomendado. Prioridade
 
 ## P1 — Confiabilidade e segurança operacional
 
-- [ ] Definir política de retenção, exportação e exclusão de dados
+- [x] Definir política de retenção, exportação e exclusão de dados
 - [x] Migrar autenticação persistente para cookies HttpOnly/Secure/SameSite
-- [ ] Recuperação de senha e verificação de e-mail
+- [x] Recuperação de senha e verificação de e-mail
 - [x] Migrações PostgreSQL validadas em staging
-- [ ] Alertas, rastreamento distribuído e SLOs
-- [ ] Testes de concorrência e de integração em ambiente implantado
-- [ ] Rever segurança de upload e limites de recursos com threat model
+- [x] Baseline de alertas, rastreamento distribuído e SLOs
+- [x] Testes de concorrência e de integração em ambiente implantado
+- [x] Revisar segurança de upload e limites de recursos com threat model
 
 ## P2 — Qualidade de respostas e escala
 

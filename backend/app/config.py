@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     public_chat_daily_limit_per_bot: int = Field(default=500, gt=0)
     widget_capability_per_minute: int = Field(default=60, gt=0)
     ai_max_output_tokens: int = Field(default=600, gt=0, le=4000)
+    retention_days: int = Field(default=365, gt=0)
+    app_public_url: str = "http://localhost:8000"
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str = "no-reply@flowforge.local"
 
     def validate_deployment(self) -> None:
         if self.app_env.lower() != "production":

@@ -136,6 +136,12 @@ As principais opções relacionadas ao chat e aos documentos são:
 | `MAX_DOCUMENT_CHARACTERS` | `500000` | Tamanho máximo do texto extraído |
 | `PUBLIC_CHAT_RATE_LIMIT_PER_MINUTE` | `20` | Limite de chat por IP |
 | `PUBLIC_CHAT_DAILY_LIMIT_PER_BOT` | `500` | Limite diário por assistente |
+| `RETENTION_DAYS` | `365` | Idade máxima usada pela limpeza de conversas |
+| `SMTP_HOST` | vazio | Servidor SMTP opcional para e-mail |
+| `SMTP_PORT` | `587` | Porta SMTP |
+| `SMTP_USER` | vazio | Usuário SMTP opcional |
+| `SMTP_PASSWORD` | vazio | Senha SMTP opcional |
+| `SMTP_FROM` | `no-reply@flowforge.local` | Remetente dos e-mails |
 
 Para produção, use `APP_ENV=production`, configure uma `SECRET_KEY` aleatória e exclusiva com pelo menos 32 caracteres, defina origens explícitas em `CORS_ORIGINS` e termine TLS em um proxy/ingress confiável. Não use a chave padrão do Compose. Consulte [Segurança e privacidade](docs/SEGURANCA.md) antes de expor a aplicação.
 

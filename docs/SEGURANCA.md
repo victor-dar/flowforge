@@ -11,6 +11,8 @@ Este documento registra controles encontrados no MVP e lacunas conhecidas. Não 
 - Limites para autenticação por IP, chat por IP e chat por chatbot, armazenados no banco.
 - Inicialização em produção rejeita a chave padrão/exemplo e CORS wildcard.
 - Chave do provedor de IA lida no backend, não enviada como dado do painel/widget.
+- Conta autenticada pode exportar seus dados e solicitar exclusão integral.
+- Conversas podem ser removidas por uma limpeza de retenção configurável via `RETENTION_DAYS`.
 
 ## Configuração segura
 
@@ -28,7 +30,7 @@ Este documento registra controles encontrados no MVP e lacunas conhecidas. Não 
 - A allowlist de domínio não é autenticação forte: cabeçalhos HTTP podem ser falsificados por clientes externos. Ela não substitui autenticação, autorização de visitantes ou regras de abuso.
 - `visitor_id` identifica a conversa, mas não é uma credencial forte; não deve ser tratado como autenticação.
 - Não há recuperação de senha, verificação de e-mail, MFA ou fluxo de exclusão de conta.
-- Não há política de retenção, exportação, consentimento do visitante ou aviso de privacidade implementados.
+- Consentimento do visitante e aviso de privacidade comercial ainda devem ser implementados pelo operador.
 - Proteções contra prompt injection não são garantidas. Documentos e mensagens devem ser considerados conteúdo não confiável.
 - Extração de PDF não é sandbox isolada; revisite limites de CPU/memória e bibliotecas antes de operar com uploads públicos.
 - Rate limit usa janela fixa e banco; não substitui proteção de borda, monitoramento ou mitigação distribuída.

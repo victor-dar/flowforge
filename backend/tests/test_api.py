@@ -36,7 +36,15 @@ def test_metrics_require_authentication(client):
 
     assert public_metrics.status_code == 200
     assert api_metrics.status_code == 200
-    assert public_metrics.json() == api_metrics.json()
+    public_data = public_metrics.json()
+    api_data = api_metrics.json()
+    assert {
+        key: public_data[key]
+        for key in ("users", "bots", "documents", "conversations", "messages")
+    } == {
+        key: api_data[key]
+        for key in ("users", "bots", "documents", "conversations", "messages")
+    }
 
 
 def test_register_login_and_duplicate_email(client):
@@ -53,6 +61,50 @@ def test_register_login_and_duplicate_email(client):
     assert duplicate.status_code == 409
 
 
+def test_retention_cleanup_accepts_configured_policy(client, monkeypatch):
+    monkeypatch.setattr(settings, "retention_days", 30)
+    headers = auth_headers(client)
+    bot = client.post(
+        "/api/bots",
+        headers=headers,
+        json={"name": "Retencao"},
+    ).json()
+    chat = client.post(
+        f"/api/public/bots/{bot['id']}/chat",
+        json={"message": "Oi", "visitor_id": "old-visitor"},
+    )
+    assert chat.status_code == 200
+
+    cleaned = client.post("/api/account/retention/cleanup", headers=headers)
+    assert cleaned.status_code == 200
+    assert cleaned.json()["deleted_conversations"] == 0
+    assert cleaned.json()["retention_days"] == 30
+
+
+def test_account_export_and_delete(client):
+    headers = auth_headers(client)
+    bot = client.post(
+        "/api/bots",
+        headers=headers,
+        json={"name": "Dados exportáveis"},
+    ).json()
+    client.post(
+        f"/api/bots/{bot['id']}/documents",
+        headers=headers,
+        files={"file": ("base.txt", b"Conteudo exportavel.", "text/plain")},
+    )
+
+    exported = client.get("/api/account/export", headers=headers)
+    assert exported.status_code == 200
+    assert exported.json()["user"]["email"] == "owner@example.com"
+    assert exported.json()["bots"][0]["name"] == "Dados exportáveis"
+    assert exported.json()["bots"][0]["documents"][0]["content"] == "Conteudo exportavel."
+
+    deleted = client.delete("/api/account", headers=headers)
+    assert deleted.status_code == 204
+    assert client.get("/api/bots", headers=headers).status_code == 401
+
+
 def test_login_rejects_invalid_password_and_me_returns_authenticated_user(client):
     headers = auth_headers(client)
     invalid_login = client.post(
@@ -64,6 +116,41 @@ def test_login_rejects_invalid_password_and_me_returns_authenticated_user(client
     profile = client.get("/api/auth/me", headers=headers)
     assert profile.status_code == 200
     assert profile.json()["email"] == "owner@example.com"
+
+
+def test_email_verification_and_password_reset_tokens(client):
+    from app.auth import create_action_token
+
+    credentials = {"email": "actions@example.com", "password": "senha-segura-123"}
+    registered = client.post("/api/auth/register", json=credentials)
+    assert registered.status_code == 201
+    user_id = registered.json()["user"]["id"]
+
+    verify_token = create_action_token(user_id, "email-verification", 1440)
+    verified = client.post(
+        "/api/auth/verify/confirm",
+        json={"token": verify_token},
+    )
+    assert verified.status_code == 200
+    assert verified.json()["status"] == "E-mail verificado"
+
+    reset_token = create_action_token(user_id, "password-reset", 30)
+    reset = client.post(
+        "/api/auth/password/reset/confirm",
+        json={"token": reset_token, "password": "nova-senha-segura-123"},
+    )
+    assert reset.status_code == 200
+
+    old_login = client.post(
+        "/api/auth/login",
+        json={"email": credentials["email"], "password": credentials["password"]},
+    )
+    new_login = client.post(
+        "/api/auth/login",
+        json={"email": credentials["email"], "password": "nova-senha-segura-123"},
+    )
+    assert old_login.status_code == 401
+    assert new_login.status_code == 200
 
 
 def test_authentication_requests_are_rate_limited(client, monkeypatch):

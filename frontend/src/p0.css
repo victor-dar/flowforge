@@ -80,6 +80,19 @@
   background: #e9f8f0;
 }
 
+.account-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.account-actions button {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 11px;
+}
+
 @media (max-width: 650px) {
   .document-row {
     grid-template-columns: 36px minmax(0, 1fr);

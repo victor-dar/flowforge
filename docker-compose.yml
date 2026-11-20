@@ -16,6 +16,13 @@ services:
       OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
       MAX_DOCUMENT_BYTES: ${MAX_DOCUMENT_BYTES:-5242880}
       MAX_DOCUMENT_CHARACTERS: ${MAX_DOCUMENT_CHARACTERS:-500000}
+      RETENTION_DAYS: ${RETENTION_DAYS:-365}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost:8000}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@flowforge.local}
     volumes:
       - flowforge_data:/data
     ports:

@@ -1,7 +1,7 @@
 import os
 
 os.environ["APP_ENV"] = "development"
-os.environ["DATABASE_URL"] = "sqlite:///./flowforge.db"
+os.environ.setdefault("DATABASE_URL", "sqlite:///./flowforge.db")
 
 import pytest
 from fastapi.testclient import TestClient
