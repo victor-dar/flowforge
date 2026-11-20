@@ -280,17 +280,31 @@ def test_allowed_widget_domains_reject_unlisted_origin(client):
         },
     ).json()
 
-    public = client.get(
-        f"/api/public/bots/{bot['id']}",
-        headers={"Origin": "https://site-nao-autorizado.com"},
+    denied = client.post(
+        "/api/widget/capability",
+        params={
+            "bot_id": bot["id"],
+            "origin": "https://site-nao-autorizado.com",
+        },
+        headers={"Referer": "https://site-nao-autorizado.com/page"},
     )
-    allowed = client.get(
-        f"/api/public/bots/{bot['id']}",
-        headers={"Origin": "https://site-autorizado.com"},
+    allowed = client.post(
+        "/api/widget/capability",
+        params={
+            "bot_id": bot["id"],
+            "origin": "https://site-autorizado.com",
+        },
+        headers={"Referer": "https://site-autorizado.com/page"},
     )
 
-    assert public.status_code == 403
+    assert denied.status_code == 403
     assert allowed.status_code == 200
+    capability = allowed.json()["capability"]
+    public = client.get(
+        f"/api/public/bots/{bot['id']}",
+        params={"capability": capability},
+    )
+    assert public.status_code == 200
 
 
 def test_public_widget_and_chat(client, monkeypatch):

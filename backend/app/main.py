@@ -4,6 +4,9 @@ import logging
 from pathlib import Path
 from time import perf_counter
 from urllib.parse import urlparse
+from datetime import datetime, timedelta, timezone
+
+import jwt
 
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,7 +22,14 @@ from app.ai import (
     generate_answer,
     hybrid_chunk_context,
 )
-from app.auth import create_token, get_current_user, get_db, hash_password, verify_password
+from app.auth import (
+    create_token,
+    get_current_user,
+    get_optional_user,
+    get_db,
+    hash_password,
+    verify_password,
+)
 from app.config import settings
 from app.documents import DocumentProcessingError, extract_document_text
 from app.models import (
@@ -113,7 +123,12 @@ def owned_bot(bot_id: int, owner_id: int, db: Session) -> Chatbot:
     return bot
 
 
-def validate_public_origin(request: Request, bot: Chatbot) -> None:
+def validate_public_origin(
+    request: Request,
+    bot: Chatbot,
+    capability: str | None = None,
+    authenticated_user: User | None = None,
+) -> None:
     allowed = [
         item.strip().lower().rstrip("/")
         for item in (bot.allowed_domains or "").split(",")
@@ -121,19 +136,22 @@ def validate_public_origin(request: Request, bot: Chatbot) -> None:
     ]
     if not allowed:
         return
-    candidate_headers = [
-        request.headers.get("origin"),
-        request.headers.get("x-flowforge-origin"),
-        request.headers.get("referer"),
-    ]
-    origins: set[str] = set()
-    for candidate in candidate_headers:
-        if candidate:
-            parsed = urlparse(candidate.strip())
-            if parsed.scheme and parsed.hostname:
-                origins.add(f"{parsed.scheme.lower()}://{parsed.netloc.lower().rstrip('/')}")
-    if not any(origin in allowed for origin in origins):
+    if authenticated_user and authenticated_user.id == bot.owner_id:
+        return
+    if not capability:
         raise HTTPException(status_code=403, detail="Origem não autorizada para este assistente")
+    try:
+        claims = jwt.decode(
+            capability,
+            settings.secret_key,
+            algorithms=["HS256"],
+            options={"require": ["exp", "sub", "origin"]},
+        )
+        origin = str(claims["origin"]).lower().rstrip("/")
+        if str(claims["sub"]) != str(bot.id) or origin not in allowed:
+            raise ValueError("Capacidade inválida")
+    except (jwt.PyJWTError, TypeError, ValueError, KeyError):
+        raise HTTPException(status_code=403, detail="Origem não autorizada para este assistente") from None
 
 
 @app.get("/health")
@@ -173,6 +191,47 @@ def widget_script():
         content=(Path(__file__).parent / "widget.js").read_text(encoding="utf-8"),
         media_type="application/javascript",
     )
+
+
+@app.post("/api/widget/capability")
+def widget_capability(
+    bot_id: int,
+    origin: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    bot = db.get(Chatbot, bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Chatbot não encontrado")
+    parsed_origin = urlparse(origin.strip())
+    origin_value = (
+        f"{parsed_origin.scheme.lower()}://{parsed_origin.netloc.lower().rstrip('/')}"
+        if parsed_origin.scheme and parsed_origin.netloc
+        else ""
+    )
+    allowed = [
+        item.strip().lower().rstrip("/")
+        for item in (bot.allowed_domains or "").split(",")
+        if item.strip()
+    ]
+    referer = request.headers.get("referer")
+    referer_origin = ""
+    if referer:
+        parsed_referer = urlparse(referer)
+        if parsed_referer.scheme and parsed_referer.netloc:
+            referer_origin = f"{parsed_referer.scheme.lower()}://{parsed_referer.netloc.lower().rstrip('/')}"
+    if allowed and (origin_value not in allowed or referer_origin != origin_value):
+        raise HTTPException(status_code=403, detail="Origem não autorizada para este assistente")
+    token = jwt.encode(
+        {
+            "sub": str(bot.id),
+            "origin": origin_value,
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=15),
+        },
+        settings.secret_key,
+        algorithm="HS256",
+    )
+    return {"capability": token}
 
 
 @app.get("/widget", response_class=HTMLResponse)
@@ -359,11 +418,17 @@ def list_conversations(bot_id: int, user: User = Depends(get_current_user), db: 
 
 
 @app.get("/api/public/bots/{bot_id}")
-def get_public_bot(bot_id: int, request: Request, db: Session = Depends(get_db)):
+def get_public_bot(
+    bot_id: int,
+    request: Request,
+    capability: str | None = None,
+    user: User | None = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+):
     bot = db.get(Chatbot, bot_id)
     if not bot:
         raise HTTPException(status_code=404, detail="Chatbot não encontrado")
-    validate_public_origin(request, bot)
+    validate_public_origin(request, bot, capability, user)
     return {
         "id": bot.id,
         "name": bot.name,
@@ -377,6 +442,8 @@ async def public_chat(
     bot_id: int,
     data: ChatRequest,
     request: Request,
+    capability: str | None = None,
+    user: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
     bot = db.scalar(
@@ -388,7 +455,7 @@ async def public_chat(
     )
     if not bot:
         raise HTTPException(status_code=404, detail="Chatbot não encontrado")
-    validate_public_origin(request, bot)
+    validate_public_origin(request, bot, capability, user)
     conversation = None
     if data.conversation_id:
         conversation = db.scalar(

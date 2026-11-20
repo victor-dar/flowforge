@@ -24,16 +24,16 @@ Este documento registra controles encontrados no MVP e lacunas conhecidas. Não 
 
 ## Lacunas e riscos conhecidos
 
-- Não há allowlist de domínios por chatbot. Rotas públicas podem ser chamadas fora do widget.
+- A allowlist por chatbot é aplicada às rotas públicas por capacidade curta assinada pelo backend. É necessário configurar os domínios autorizados no assistente.
 - `visitor_id` identifica a conversa, mas não é uma credencial forte; não deve ser tratado como autenticação.
 - Não há recuperação de senha, verificação de e-mail, MFA ou fluxo de exclusão de conta.
 - Não há política de retenção, exportação, consentimento do visitante ou aviso de privacidade implementados.
 - Proteções contra prompt injection não são garantidas. Documentos e mensagens devem ser considerados conteúdo não confiável.
 - Extração de PDF não é sandbox isolada; revisite limites de CPU/memória e bibliotecas antes de operar com uploads públicos.
 - Rate limit usa janela fixa e banco; não substitui proteção de borda, monitoramento ou mitigação distribuída.
-- O frontend atualmente guarda o JWT em `localStorage`, o que aumenta o impacto de uma vulnerabilidade XSS.
+- O frontend não grava mais o JWT no `localStorage`; sessões de painel usam cookie `HttpOnly`.
+- A autenticação Bearer continua aceita por compatibilidade durante a migração.
 - Login e cadastro também definem um cookie `flowforge_access` com `HttpOnly` e `SameSite=Lax`; em produção o cookie é `Secure`.
-- O frontend ainda mantém o token no `localStorage` para compatibilidade. O suporte completo a cookies exige migrar todas as chamadas privadas, remover o armazenamento no navegador e adicionar proteção CSRF explícita.
 - SQLite e `create_all` não fornecem, por si sós, estratégia de migração, alta disponibilidade ou operação concorrente.
 
 ## Privacidade e LGPD

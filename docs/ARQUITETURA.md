@@ -77,7 +77,7 @@ Exemplo:
 ></script>
 ```
 
-Substitua domínio e ID pelos valores do seu ambiente. As requisições públicas podem ser restritas por uma lista de domínios configurada no chatbot. O backend valida `Origin`, `Referer` ou `X-FlowForge-Origin`; CORS continua sendo uma proteção separada.
+Substitua domínio e ID pelos valores do seu ambiente. As requisições públicas podem ser restritas por uma lista de domínios configurada no chatbot. O script solicita ao backend uma capacidade curta assinada após validar o `Referer`; o parâmetro de domínio da página não é suficiente por si só. CORS continua sendo uma proteção separada.
 
 ## Implantação
 

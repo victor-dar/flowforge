@@ -207,7 +207,7 @@ Esse endpoint não substitui métricas, rastreamento distribuído ou monitoramen
 ## Limitações atuais
 
 - Embeddings opcionais dependem de um provedor externo; não há OCR ou banco vetorial persistente.
-- O painel mantém compatibilidade com Bearer e `localStorage`; em produção também recebe cookie `HttpOnly` com `Secure` e `SameSite=Lax`. A remoção completa do token local ainda requer migrar todas as chamadas e adicionar proteção CSRF.
+- O painel usa exclusivamente cookie `HttpOnly` com `Secure` e `SameSite=Lax` em produção. Bearer permanece aceita apenas para compatibilidade da API.
 - O widget pode restringir origens por assistente, mas a lista não substitui HTTPS e controles de segurança adicionais.
 - Sem fila/worker para processar documentos grandes.
 - SQLite como banco padrão; carga concorrente e operação de produção não foram validadas.

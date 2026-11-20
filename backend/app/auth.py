@@ -17,6 +17,17 @@ from app.models import SessionLocal, User
 bearer = HTTPBearer(auto_error=False)
 
 
+def optional_bearer_token(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+    access_token_cookie: str | None = Cookie(default=None, alias="flowforge_access"),
+) -> str | None:
+    if credentials:
+        return credentials.credentials
+    if settings.app_env.lower() == "production":
+        return access_token_cookie
+    return access_token_cookie
+
+
 def get_db():
     db = SessionLocal()
     try:
@@ -87,3 +98,21 @@ def get_current_user(
     if user is None:
         raise unauthorized
     return user
+
+
+def get_optional_user(
+    token: str | None = Depends(optional_bearer_token),
+    db: Session = Depends(get_db),
+) -> User | None:
+    if not token:
+        return None
+    try:
+        claims = jwt.decode(
+            token,
+            settings.secret_key,
+            algorithms=["HS256"],
+            options={"require": ["exp", "sub"]},
+        )
+        return db.get(User, int(claims["sub"]))
+    except (jwt.PyJWTError, TypeError, ValueError, KeyError):
+        return None

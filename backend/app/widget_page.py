@@ -26,7 +26,8 @@ WIDGET_HTML = '''<!doctype html>
   <script>
   const params = new URLSearchParams(location.search);
   const botId = params.get('bot_id');
-  const parentDomain = params.get('domain');
+  const capability = params.get('capability');
+  const denied = params.get('denied');
   const api = location.origin;
   let conversation = null;
   const visitorKey = 'flowforge-visitor-' + botId;
@@ -43,8 +44,10 @@ WIDGET_HTML = '''<!doctype html>
     messages.append(el);
     messages.scrollTop = messages.scrollHeight;
   }
-  const originHeaders = {'X-FlowForge-Origin': parentDomain || location.origin};
-  fetch(api + '/api/public/bots/' + encodeURIComponent(botId), {headers: originHeaders})
+  if (denied) {
+    add('Este assistente não está disponível neste domínio.', 'assistant');
+  } else {
+  fetch(api + '/api/public/bots/' + encodeURIComponent(botId) + '?capability=' + encodeURIComponent(capability || ''))
     .then(r => r.ok ? r.json() : Promise.reject())
     .then(bot => {
       document.getElementById('name').textContent = bot.name;
@@ -65,9 +68,9 @@ WIDGET_HTML = '''<!doctype html>
     waiting.textContent = '…';
     messages.append(waiting);
     try {
-      const r = await fetch(api + '/api/public/bots/' + encodeURIComponent(botId) + '/chat', {
+      const r = await fetch(api + '/api/public/bots/' + encodeURIComponent(botId) + '/chat?capability=' + encodeURIComponent(capability || ''), {
         method: 'POST',
-        headers: {'Content-Type': 'application/json', 'X-FlowForge-Origin': parentDomain || location.origin},
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({message: text, visitor_id: visitor, conversation_id: conversation})
       });
       const data = await r.json();
@@ -79,6 +82,7 @@ WIDGET_HTML = '''<!doctype html>
     }
     messages.scrollTop = messages.scrollHeight;
   });
+  }
   </script>
 </body>
 </html>'''

@@ -24,7 +24,7 @@ Instruções claras e informações atuais ajudam o assistente, mas não garante
 
 1. Abra **Base de conhecimento**.
 2. Selecione PDF, TXT, MD ou CSV de até 5 MB.
-3. Aguarde a confirmação. O texto extraído é usado pela busca lexical.
+3. Aguarde a confirmação. O texto extraído é usado pela busca híbrida lexical e semântica.
 
 O texto extraído também tem limite de 500.000 caracteres por documento. Arquivos acima de qualquer limite são rejeitados integralmente. PDFs digitalizados sem camada de texto e arquivos vazios não são aceitos; falhas de extração são mostradas como erro. Evite enviar informações pessoais ou confidenciais sem revisar as políticas do seu ambiente.
 
@@ -45,7 +45,7 @@ Sem `OPENAI_API_KEY`, o chat retorna trechos encontrados ou informa que não há
 4. Teste o widget em uma página de homologação antes de publicar amplamente.
 5. Em **Configuração**, informe os domínios autorizados, como `https://seudominio.com`.
 
-O modo atual não restringe o widget a domínios específicos por chatbot. Considere isso antes de compartilhar o snippet em produção.
+Domínios não autorizados não recebem uma capacidade válida do widget. Ainda assim, mantenha HTTPS e controles de segurança adicionais em produção.
 
 ## 6. Excluir
 

@@ -45,13 +45,12 @@ function responseError(data: { detail?: unknown }, fallback: string) {
   return fallback
 }
 
-async function request(path: string, token: string, init: RequestInit = {}) {
+async function request(path: string, init: RequestInit = {}) {
   const response = await fetch(`${API}${path}`, {
     ...init,
     credentials: 'include',
     headers: {
       ...(init.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
-      Authorization: `Bearer ${token}`,
       ...init.headers,
     },
   })
@@ -68,7 +67,8 @@ async function request(path: string, token: string, init: RequestInit = {}) {
 }
 
 export default function App() {
-  const [token, setToken] = useState(localStorage.getItem('flowforge-token') || '')
+  const [authenticated, setAuthenticated] = useState(false)
+  const [sessionChecked, setSessionChecked] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [register, setRegister] = useState(false)
@@ -85,10 +85,10 @@ export default function App() {
   const [newBotName, setNewBotName] = useState('')
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
 
-  const refresh = async (auth = token) => {
+  const refresh = async () => {
     setLoading(true)
     try {
-      const data = await request('/api/bots', auth)
+      const data = await request('/api/bots')
       setBots(data)
       if (selected) {
         setSelected(data.find((bot: Bot) => bot.id === selected.id) || null)
@@ -103,8 +103,8 @@ export default function App() {
       method: 'POST',
       credentials: 'include',
     }).catch(() => undefined)
-    localStorage.removeItem('flowforge-token')
-    setToken('')
+    setAuthenticated(false)
+    setSessionChecked(true)
     setEmail('')
     setPassword('')
     setBots([])
@@ -115,22 +115,26 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (token) {
-      refresh().catch((error: unknown) => {
-        // Clear credentials only when the server rejects them; network errors are recoverable.
-        if (error instanceof ApiError && error.status === 401) {
-          logout()
-        } else {
-          setError('Não foi possível carregar seus assistentes. Verifique a conexão com a API e tente novamente.')
-        }
+    request('/api/auth/me')
+      .then((user: { email: string }) => {
+        setEmail(user.email)
+        setAuthenticated(true)
       })
-      request('/api/auth/me', token)
-        .then((user: { email: string }) => setEmail(user.email))
-        .catch((error: unknown) => {
-          if (error instanceof ApiError && error.status === 401) logout()
-        })
+      .catch((error: unknown) => {
+        if (error instanceof ApiError && error.status === 401) setAuthenticated(false)
+        else setError('Não foi possível verificar sua sessão.')
+      })
+      .finally(() => setSessionChecked(true))
+  }, [])
+
+  useEffect(() => {
+    if (authenticated) {
+      refresh().catch((error: unknown) => {
+        if (error instanceof ApiError && error.status === 401) logout()
+        else setError('Não foi possível carregar seus assistentes. Verifique a conexão com a API e tente novamente.')
+      })
     }
-  }, [token])
+  }, [authenticated])
 
   const auth = async (event: FormEvent) => {
     event.preventDefault()
@@ -150,9 +154,8 @@ export default function App() {
         throw new ApiError(responseError(result, 'Falha ao entrar.'), data.status)
       }
 
-      localStorage.setItem('flowforge-token', result.access_token)
       setEmail(result.user.email)
-      setToken(result.access_token)
+      setAuthenticated(true)
     } catch (e) {
       setError(errorMessage(e))
     } finally {
@@ -172,7 +175,7 @@ export default function App() {
     if (!name) return
 
     try {
-      const bot = await request('/api/bots', token, {
+      const bot = await request('/api/bots', {
         method: 'POST',
         body: JSON.stringify({ name, business_name: '', description: '' }),
       })
@@ -192,7 +195,7 @@ export default function App() {
     setSaveState('saving')
 
     try {
-      const updated = await request(`/api/bots/${selected.id}`, token, {
+      const updated = await request(`/api/bots/${selected.id}`, {
         method: 'PATCH',
         body: JSON.stringify(changes),
       })
@@ -211,7 +214,7 @@ export default function App() {
     if (!window.confirm(`Excluir “${bot.name}” e todos os seus dados?`)) return
 
     try {
-      await request(`/api/bots/${bot.id}`, token, { method: 'DELETE' })
+      await request(`/api/bots/${bot.id}`, { method: 'DELETE' })
       setBots((current) => current.filter((item) => item.id !== bot.id))
       if (selected?.id === bot.id) setSelected(null)
     } catch (e) {
@@ -231,6 +234,7 @@ export default function App() {
     try {
       const response = await fetch(`${API}/api/public/bots/${selected.id}/chat`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text, visitor_id: 'dashboard-test', conversation_id: conversation }),
       })
@@ -260,7 +264,7 @@ export default function App() {
     form.append('file', file)
 
     try {
-      await request(`/api/bots/${selected.id}/documents`, token, { method: 'POST', body: form })
+      await request(`/api/bots/${selected.id}/documents`, { method: 'POST', body: form })
       await refresh()
     } catch (e) {
       setError(errorMessage(e))
@@ -269,7 +273,15 @@ export default function App() {
 
   const totalDocuments = bots.reduce((sum, bot) => sum + bot.document_count, 0)
 
-  if (!token) {
+  if (!sessionChecked) {
+    return (
+      <main className="auth-page">
+        <p className="muted">Verificando sua sessão…</p>
+      </main>
+    )
+  }
+
+  if (!authenticated) {
     return (
       <main className="auth-page">
         <div className="auth-card">
