@@ -26,6 +26,19 @@ def test_healthcheck(client):
     assert response.json() == {"status": "ok"}
 
 
+def test_metrics_require_authentication(client):
+    assert client.get("/metrics").status_code == 401
+    assert client.get("/api/metrics").status_code == 401
+
+    headers = auth_headers(client)
+    public_metrics = client.get("/metrics", headers=headers)
+    api_metrics = client.get("/api/metrics", headers=headers)
+
+    assert public_metrics.status_code == 200
+    assert api_metrics.status_code == 200
+    assert public_metrics.json() == api_metrics.json()
+
+
 def test_register_login_and_duplicate_email(client):
     credentials = {"email": "owner@example.com", "password": "senha-segura-123"}
     registered = client.post("/api/auth/register", json=credentials)

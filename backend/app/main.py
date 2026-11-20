@@ -160,7 +160,11 @@ def health():
 
 
 @app.get("/metrics")
-def metrics(db: Session = Depends(get_db)):
+@app.get("/api/metrics")
+def metrics(
+    _: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     user_count = db.scalar(select(func.count()).select_from(User)) or 0
     bot_count = db.scalar(select(func.count()).select_from(Chatbot)) or 0
     document_count = db.scalar(select(func.count()).select_from(KnowledgeDocument)) or 0

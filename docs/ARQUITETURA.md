@@ -59,7 +59,7 @@ Não há fila/worker, OCR ou banco vetorial dedicado nesta versão.
 
 ## Persistência e consistência
 
-SQLAlchemy é a camada de persistência. A configuração padrão utiliza SQLite local; Docker Compose persiste o arquivo em volume. Alembic fornece migrações iniciais; o lifespan ainda pode criar tabelas ausentes durante desenvolvimento com `Base.metadata.create_all`.
+SQLAlchemy é a camada de persistência. A configuração padrão utiliza SQLite local; Docker Compose persiste o arquivo em volume. PostgreSQL é suportado com Psycopg e pode ser iniciado pelo `docker-compose.postgres.yml`. Alembic fornece migrações iniciais; o lifespan ainda pode criar tabelas ausentes durante desenvolvimento com `Base.metadata.create_all`, mas produção deve executar Alembic.
 
 SQLite/PostgreSQL são os dialetos explicitamente suportados pelo rate limiter. A URL pode ser alterada, mas outros dialetos não são compatíveis com esse recurso no código atual.
 

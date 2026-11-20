@@ -188,6 +188,24 @@ docker compose -f docker-compose.staging.yml up --build
 
 Defina também `OPENAI_API_KEY` e `VITE_API_URL` quando necessário.
 
+### PostgreSQL
+
+Para iniciar a API, o painel e PostgreSQL 16:
+
+```bash
+POSTGRES_PASSWORD='senha-do-banco' \
+SECRET_KEY='uma-chave-secreta-com-pelo-menos-32-caracteres' \
+CORS_ORIGINS='http://localhost:5173' \
+docker compose -f docker-compose.postgres.yml up --build
+```
+
+Antes da implantação, execute as migrações:
+
+```bash
+DATABASE_URL='postgresql+psycopg://usuario:senha@localhost:5432/flowforge' \
+alembic -c alembic.ini upgrade head
+```
+
 ### Dados de exemplo
 
 Há um conjunto pronto para testar um assistente de cafeteria em [`docs/exemplos/cafe-salvador/`](docs/exemplos/cafe-salvador/):
@@ -200,7 +218,7 @@ Esses arquivos podem ser enviados pela aba **Base de conhecimento** e testados p
 
 ## Observabilidade
 
-A API registra em JSON o método, caminho, status e duração das requisições. O endpoint público de desenvolvimento `GET /metrics` retorna contagens de usuários, assistentes, documentos, conversas e mensagens.
+A API registra em JSON o método, caminho, status e duração das requisições. Contagens operacionais ficam disponíveis somente para usuários autenticados em `GET /api/metrics` e `GET /metrics`.
 
 Esse endpoint não substitui métricas, rastreamento distribuído ou monitoramento de erros em produção.
 

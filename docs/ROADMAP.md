@@ -13,6 +13,7 @@ O roadmap separa o que já existe no código do trabalho recomendado. Prioridade
 - [x] Domínio permitido por chatbot
 - [x] Migrações de banco com Alembic
 - [x] Observabilidade inicial com logs JSON e métricas
+- [x] Métricas operacionais protegidas por autenticação
 - [ ] Completar visualização e gerenciamento de documentos no painel
 - [ ] Adicionar fluxo guiado de configuração e checklist de publicação
 - [ ] Exibir erros, limites e estado do serviço com feedback consistente
@@ -21,9 +22,9 @@ O roadmap separa o que já existe no código do trabalho recomendado. Prioridade
 ## P1 — Confiabilidade e segurança operacional
 
 - [ ] Definir política de retenção, exportação e exclusão de dados
-- [ ] Migrar autenticação persistente para cookies HttpOnly/Secure/SameSite
+- [x] Migrar autenticação persistente para cookies HttpOnly/Secure/SameSite
 - [ ] Recuperação de senha e verificação de e-mail
-- [ ] Migrações PostgreSQL validadas em staging
+- [x] Migrações PostgreSQL validadas em staging
 - [ ] Alertas, rastreamento distribuído e SLOs
 - [ ] Testes de concorrência e de integração em ambiente implantado
 - [ ] Rever segurança de upload e limites de recursos com threat model

@@ -14,6 +14,7 @@ A especificação OpenAPI interativa gerada pelo FastAPI está disponível em `/
 | Método | Rota | Acesso | Descrição |
 |---|---|---|---|
 | `GET` | `/health` | Público | Verificação básica de processo; não verifica banco/provedor |
+| `GET` | `/metrics` ou `/api/metrics` | Autenticado | Contagens básicas de usuários, assistentes, documentos e conversas |
 | `GET` | `/widget.js` | Público | Script incorporável |
 | `GET` | `/widget` | Público | Página do iframe |
 
