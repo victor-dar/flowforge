@@ -577,7 +577,10 @@ def test_ai_client_wraps_network_errors(monkeypatch):
 
 def test_production_rejects_default_secret_and_wildcard_cors():
     with pytest.raises(RuntimeError, match="SECRET_KEY"):
-        Settings(app_env="production").validate_deployment()
+        Settings(
+            app_env="production",
+            secret_key="change-this-secret-before-deploying",
+        ).validate_deployment()
 
     with pytest.raises(RuntimeError, match="CORS_ORIGINS"):
         Settings(
