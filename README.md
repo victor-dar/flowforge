@@ -24,19 +24,25 @@
 
 FlowForge é um projeto open source em estágio de MVP para configurar chatbots de atendimento com informações de um negócio e incorporá-los em sites. O repositório contém um painel web em React e TypeScript, uma API em FastAPI e um widget JavaScript.
 
-> **Estado:** funcional para desenvolvimento e demonstração; ainda não recomendado como serviço SaaS de produção. A busca de documentos é lexical, o armazenamento padrão é SQLite e recursos operacionais e de privacidade ainda precisam evoluir.
+> **Estado:** funcional para desenvolvimento e demonstração; ainda não recomendado como serviço SaaS de produção. A busca pode combinar resultados lexicais e embeddings opcionais da OpenAI, o armazenamento padrão é SQLite e recursos operacionais e de privacidade ainda precisam evoluir.
 
 ## Funcionalidades
 
 - Cadastro, login e gerenciamento isolado de assistentes por usuário.
 - Configuração de nome, empresa, instruções, mensagem inicial e cor.
-- Upload de documentos PDF, TXT, MD e CSV, com limite padrão de 5 MB.
+- Upload de documentos PDF, TXT, MD e CSV, com limites configuráveis de tamanho e caracteres.
+- Persistência de documentos, conversas e mensagens por assistente.
+- Busca híbrida: recuperação lexical local e embeddings opcionais da OpenAI.
+- Respostas diferentes para saudações e perguntas sem contexto no modo sem provedor de IA.
 - Teste de conversa no painel e histórico acessível pela API.
 - Widget incorporável em sites por meio de um snippet JavaScript.
 - Integração opcional com uma API compatível com OpenAI.
 - Limites de requisição para autenticação e chat público.
+- Logs estruturados de requisições e endpoint interno de métricas.
+- Migrações Alembic e configuração de ambiente de staging.
+- Suíte de testes backend e frontend integrada ao CI.
 
-Sem chave de IA, o chat responde com trechos encontrados nos documentos ou informa que não encontrou contexto suficiente. A recuperação atual usa correspondência lexical; não usa embeddings ou busca vetorial.
+Sem chave de IA, o chat usa recuperação lexical, responde a saudações diretamente e apresenta os trechos encontrados ou informa que não encontrou contexto suficiente. Com `OPENAI_API_KEY`, o RAG pode combinar resultados lexicais com embeddings do modelo configurado. Se o provedor de embeddings falhar, a busca lexical continua como fallback.
 
 ## Interface
 
@@ -100,6 +106,12 @@ npm run dev
 
 O painel usa `http://localhost:8000` como URL padrão da API. Para apontar a outro endereço, defina `VITE_API_URL` antes de iniciar o Vite ou gerar o build.
 
+Se o painel abrir por `127.0.0.1:5173` ou pelo endereço da rede local, configure essas origens em `CORS_ORIGINS`:
+
+```bash
+export CORS_ORIGINS='http://localhost:5173,http://127.0.0.1:5173,http://192.168.15.8:5173'
+```
+
 ## Configuração
 
 A API lê configurações do ambiente e de `backend/.env`. As opções disponíveis e seus valores padrão estão em [`backend/.env.example`](backend/.env.example).
@@ -107,6 +119,19 @@ A API lê configurações do ambiente e de `backend/.env`. As opções disponív
 Além do limite de upload (`MAX_DOCUMENT_BYTES`, padrão de 5 MB), o texto extraído tem limite de `MAX_DOCUMENT_CHARACTERS` (padrão de 500.000 caracteres). Arquivos que ultrapassarem qualquer limite são rejeitados sem salvar conteúdo parcial.
 
 O RAG combina ranking lexical local com embeddings da OpenAI quando `OPENAI_API_KEY` está configurado. Sem uma chave, a busca continua disponível usando recuperação lexical.
+
+As principais opções relacionadas ao chat e aos documentos são:
+
+| Variável | Padrão | Uso |
+|---|---:|---|
+| `OPENAI_API_KEY` | vazio | Ativa geração de resposta pelo provedor compatível |
+| `OPENAI_MODEL` | `gpt-4o-mini` | Modelo usado para respostas |
+| `OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` | Modelo usado para embeddings |
+| `AI_MAX_OUTPUT_TOKENS` | `600` | Limite máximo de tokens de resposta |
+| `MAX_DOCUMENT_BYTES` | `5242880` | Tamanho máximo de upload |
+| `MAX_DOCUMENT_CHARACTERS` | `500000` | Tamanho máximo do texto extraído |
+| `PUBLIC_CHAT_RATE_LIMIT_PER_MINUTE` | `20` | Limite de chat por IP |
+| `PUBLIC_CHAT_DAILY_LIMIT_PER_BOT` | `500` | Limite diário por assistente |
 
 Para produção, use `APP_ENV=production`, configure uma `SECRET_KEY` aleatória e exclusiva com pelo menos 32 caracteres, defina origens explícitas em `CORS_ORIGINS` e termine TLS em um proxy/ingress confiável. Não use a chave padrão do Compose. Consulte [Segurança e privacidade](docs/SEGURANCA.md) antes de expor a aplicação.
 
@@ -128,15 +153,64 @@ npm test
 npm run build
 ```
 
-O CI também executa testes do backend com Python 3.12 e build do frontend com Node.js 22 em pushes e pull requests.
+O backend possui testes unitários e de integração para autenticação, privacidade entre assistentes, upload, extração de documentos, chat, rate limiting e avaliação automática do corpus RAG. O frontend possui testes de sessão e interface com Vitest e Testing Library.
+
+O CI executa os testes do backend com Python 3.12, os testes e o build do frontend com Node.js 22 em pushes e pull requests.
+
+### Migrações do banco
+
+O projeto inclui configuração inicial do Alembic:
+
+```bash
+cd backend
+alembic -c ../alembic.ini upgrade head
+```
+
+Para criar uma nova revisão após alterações nos modelos:
+
+```bash
+alembic -c ../alembic.ini revision --autogenerate -m "descricao da mudanca"
+```
+
+Para desenvolvimento local rápido, o lifespan ainda usa `create_all`. Em produção, use migrações Alembic em vez de depender apenas da criação automática.
+
+### Ambiente de staging
+
+Há uma configuração separada em [`docker-compose.staging.yml`](docker-compose.staging.yml):
+
+```bash
+SECRET_KEY='uma-chave-secreta-com-pelo-menos-32-caracteres' \
+CORS_ORIGINS='https://painel.exemplo.com' \
+docker compose -f docker-compose.staging.yml up --build
+```
+
+Defina também `OPENAI_API_KEY` e `VITE_API_URL` quando necessário.
+
+### Dados de exemplo
+
+Há um conjunto pronto para testar um assistente de cafeteria em [`docs/exemplos/cafe-salvador/`](docs/exemplos/cafe-salvador/):
+
+- `cardapio.txt`: bebidas, comidas, adicionais e formas de pagamento
+- `horario-local.txt`: horários e endereço
+- `politicas.txt`: cancelamento, troca e reembolso
+
+Esses arquivos podem ser enviados pela aba **Base de conhecimento** e testados pela aba **Testar assistente**.
+
+## Observabilidade
+
+A API registra em JSON o método, caminho, status e duração das requisições. O endpoint público de desenvolvimento `GET /metrics` retorna contagens de usuários, assistentes, documentos, conversas e mensagens.
+
+Esse endpoint não substitui métricas, rastreamento distribuído ou monitoramento de erros em produção.
 
 ## Limitações atuais
 
-- Busca lexical simples; sem embeddings, OCR ou banco vetorial.
+- Embeddings opcionais dependem de um provedor externo; não há OCR ou banco vetorial persistente.
+- Sem fila/worker para processar documentos grandes.
 - SQLite como banco padrão; carga concorrente e operação de produção não foram validadas.
 - Sem confirmação de e-mail, recuperação de senha, cobrança ou métricas de uso completas.
 - O widget ainda não restringe domínios permitidos por chatbot.
 - Políticas de retenção, exportação e exclusão de dados ainda precisam ser definidas.
+- A recuperação não envia automaticamente todo o histórico anterior ao modelo.
 
 Essas limitações e os próximos passos estão detalhados em [Escopo](docs/ESCOPO.md) e [Roadmap](docs/ROADMAP.md).
 
