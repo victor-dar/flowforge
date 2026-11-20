@@ -2,6 +2,7 @@ import logging
 import math
 import re
 import json
+import unicodedata
 from collections import Counter
 
 import httpx
@@ -9,6 +10,14 @@ import httpx
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def normalize_search_text(text: str) -> str:
+    return "".join(
+        char
+        for char in unicodedata.normalize("NFKD", text)
+        if not unicodedata.combining(char)
+    ).lower()
 
 
 class AIProviderError(RuntimeError):
@@ -34,17 +43,22 @@ def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 150) -> list[st
 
 def relevant_context(question: str, documents: list[str], limit: int = 4) -> str:
     """Dependency-free hybrid lexical retrieval with normalized term scoring."""
-    terms = set(re.findall(r"\w{3,}", question.lower()))
+    terms = set(re.findall(r"\w{3,}", normalize_search_text(question)))
     if not terms:
         return ""
     ranked: list[tuple[int, str]] = []
     for document in documents:
-        chunks = [part.strip() for part in re.split(r"(?<=[.!?\n])\s+", document) if part.strip()]
+        chunks = [
+            part.strip()
+            for part in re.split(r"(?<=[.!?\n])\s+", document)
+            if part.strip()
+        ]
         for chunk in chunks:
-            chunk_terms = Counter(re.findall(r"\w{3,}", chunk.lower()))
+            normalized_chunk = normalize_search_text(chunk)
+            chunk_terms = Counter(re.findall(r"\w{3,}", normalized_chunk))
             overlap = sum(chunk_terms[term] for term in terms)
-            question_phrases = set(re.findall(r"\w+", question.lower()))
-            chunk_phrases = set(re.findall(r"\w+", chunk.lower()))
+            question_phrases = set(re.findall(r"\w+", normalize_search_text(question)))
+            chunk_phrases = set(re.findall(r"\w+", normalized_chunk))
             phrase_score = len(question_phrases & chunk_phrases)
             score = overlap * 3 + phrase_score
             if score:
@@ -99,8 +113,8 @@ async def hybrid_context(question: str, documents: list[str], limit: int = 4) ->
             return lexical
         ranked: list[tuple[float, str]] = []
         for document in documents:
-            chunks = [part.strip() for part in re.split(r"(?<=[.!?\n])\s+", document) if part.strip()]
-            for chunk in chunks[:20]:
+            chunks = chunk_text(document, chunk_size=700, overlap=100)
+            for chunk in chunks:
                 chunk_embedding = await embed_text(chunk)
                 score = cosine_similarity(question_embedding, chunk_embedding)
                 if score > 0.72:

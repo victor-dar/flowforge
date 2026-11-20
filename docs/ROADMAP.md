@@ -31,7 +31,7 @@ O roadmap separa o que já existe no código do trabalho recomendado. Prioridade
 
 ## P2 — Qualidade de respostas e escala
 
-- [ ] Expandir avaliação automática da busca lexical e semântica
+- [x] Expandir avaliação automática da busca lexical e semântica
 - [ ] Migrar embeddings para banco vetorial adequado
 - [ ] Abstrair provedores e registrar consumo/tokens
 - [ ] Avaliar PostgreSQL para persistência de produção

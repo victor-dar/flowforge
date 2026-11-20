@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from app.ai import relevant_context
+from app.rag_eval import evaluate_corpus
 
 
 FIXTURES = Path(__file__).parent / "fixtures" / "rag_eval"
@@ -40,3 +41,14 @@ def test_rag_corpus_retrieval_metrics():
 
     assert source_recall >= 0.70
     assert abstain_rate >= 0.80
+
+
+def test_rag_evaluation_report_has_quality_metrics():
+    report = evaluate_corpus()
+
+    assert report["question_count"] == 11
+    assert 0 <= report["source_recall"] <= 1
+    assert 0 <= report["answer_success"] <= 1
+    assert 0 <= report["chatbot_isolation"] <= 1
+    assert 0 <= report["mrr"] <= 1
+    assert len(report["results"]) == 11

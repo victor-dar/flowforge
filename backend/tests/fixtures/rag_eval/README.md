@@ -8,4 +8,16 @@ Este conjunto é um fixture versionado para construir e comparar a recuperação
 - Casos `chatbot_isolation` indicam fontes que existem em outro chatbot e não podem aparecer no contexto recuperado.
 - Casos `multi_document` exigem evidência das duas fontes indicadas.
 
-Os testes atuais validam a estrutura do corpus e a correspondência dos trechos de referência com as fontes. Eles **não** medem ainda recall, ranking ou qualidade de respostas: essa avaliação só será executável quando o pipeline de recuperação e geração for implementado.
+Os testes validam a estrutura do corpus, a correspondência dos trechos e métricas de recuperação:
+
+- recall das fontes esperadas;
+- sucesso das respostas por fonte;
+- isolamento entre chatbots;
+- MRR (Mean Reciprocal Rank).
+
+Execute o relatório pela raiz do repositório:
+
+```bash
+cd backend
+python -m app.rag_eval
+```

@@ -165,6 +165,13 @@ npm run build
 
 O backend possui testes unitários e de integração para autenticação, privacidade entre assistentes, upload, extração de documentos, chat, rate limiting e avaliação automática do corpus RAG. O frontend possui testes de sessão e interface com Vitest e Testing Library.
 
+O relatório de qualidade do corpus RAG pode ser executado com:
+
+```bash
+cd backend
+python -m app.rag_eval
+```
+
 O CI executa os testes do backend com Python 3.12, os testes e o build do frontend com Node.js 22 em pushes e pull requests.
 
 ### Migrações do banco
