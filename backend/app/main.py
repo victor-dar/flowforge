@@ -200,6 +200,19 @@ def widget_capability(
     request: Request,
     db: Session = Depends(get_db),
 ):
+    address = client_address(request.client.host if request.client else None)
+    consume_rate_limit(
+        db,
+        f"widget-capability-ip:{address}",
+        settings.widget_capability_per_minute,
+        60,
+    )
+    consume_rate_limit(
+        db,
+        f"widget-capability-bot:{bot_id}",
+        settings.widget_capability_per_minute,
+        60,
+    )
     bot = db.get(Chatbot, bot_id)
     if not bot:
         raise HTTPException(status_code=404, detail="Chatbot não encontrado")

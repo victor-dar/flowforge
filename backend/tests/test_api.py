@@ -307,6 +307,66 @@ def test_allowed_widget_domains_reject_unlisted_origin(client):
     assert public.status_code == 200
 
 
+def test_widget_capability_rejects_direct_tampered_and_mismatched_requests(client):
+    headers = auth_headers(client)
+    bot = client.post(
+        "/api/bots",
+        headers=headers,
+        json={
+            "name": "Widget protegido",
+            "allowed_domains": ["https://loja-autorizada.com"],
+        },
+    ).json()
+
+    client.cookies.clear()
+    direct = client.get(f"/api/public/bots/{bot['id']}")
+    assert direct.status_code == 403
+
+    mismatched_referer = client.post(
+        "/api/widget/capability",
+        params={"bot_id": bot["id"], "origin": "https://loja-autorizada.com"},
+        headers={"Referer": "https://outro-dominio.com/page"},
+    )
+    assert mismatched_referer.status_code == 403
+
+    allowed = client.post(
+        "/api/widget/capability",
+        params={"bot_id": bot["id"], "origin": "https://loja-autorizada.com"},
+        headers={"Referer": "https://loja-autorizada.com/page"},
+    )
+    assert allowed.status_code == 200
+    capability = allowed.json()["capability"]
+
+    tampered = capability[:-1] + ("A" if capability[-1] != "A" else "B")
+    rejected = client.get(
+        f"/api/public/bots/{bot['id']}",
+        params={"capability": tampered},
+    )
+    assert rejected.status_code == 403
+
+
+def test_widget_capability_endpoint_is_rate_limited(client, monkeypatch):
+    monkeypatch.setattr(settings, "widget_capability_per_minute", 1)
+    headers = auth_headers(client)
+    bot = client.post(
+        "/api/bots",
+        headers=headers,
+        json={"name": "Widget limitado"},
+    ).json()
+
+    first = client.post(
+        "/api/widget/capability",
+        params={"bot_id": bot["id"], "origin": "http://localhost"},
+    )
+    second = client.post(
+        "/api/widget/capability",
+        params={"bot_id": bot["id"], "origin": "http://localhost"},
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+
+
 def test_public_widget_and_chat(client, monkeypatch):
     headers = auth_headers(client)
     bot = client.post(

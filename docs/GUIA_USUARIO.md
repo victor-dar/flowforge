@@ -45,7 +45,7 @@ Sem `OPENAI_API_KEY`, o chat retorna trechos encontrados ou informa que não há
 4. Teste o widget em uma página de homologação antes de publicar amplamente.
 5. Em **Configuração**, informe os domínios autorizados, como `https://seudominio.com`.
 
-Domínios não autorizados não recebem uma capacidade válida do widget. Ainda assim, mantenha HTTPS e controles de segurança adicionais em produção.
+Domínios não autorizados não recebem uma capacidade válida do widget. Ainda assim, mantenha HTTPS e controles de segurança adicionais em produção. Essa proteção limita embedding em sites não autorizados, mas não identifica ou autentica visitantes individuais.
 
 ## 6. Excluir
 

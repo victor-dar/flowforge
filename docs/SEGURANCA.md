@@ -25,6 +25,7 @@ Este documento registra controles encontrados no MVP e lacunas conhecidas. Não 
 ## Lacunas e riscos conhecidos
 
 - A allowlist por chatbot é aplicada às rotas públicas por capacidade curta assinada pelo backend. É necessário configurar os domínios autorizados no assistente.
+- A allowlist de domínio não é autenticação forte: cabeçalhos HTTP podem ser falsificados por clientes externos. Ela não substitui autenticação, autorização de visitantes ou regras de abuso.
 - `visitor_id` identifica a conversa, mas não é uma credencial forte; não deve ser tratado como autenticação.
 - Não há recuperação de senha, verificação de e-mail, MFA ou fluxo de exclusão de conta.
 - Não há política de retenção, exportação, consentimento do visitante ou aviso de privacidade implementados.

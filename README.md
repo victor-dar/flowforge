@@ -209,6 +209,7 @@ Esse endpoint não substitui métricas, rastreamento distribuído ou monitoramen
 - Embeddings opcionais dependem de um provedor externo; não há OCR ou banco vetorial persistente.
 - O painel usa exclusivamente cookie `HttpOnly` com `Secure` e `SameSite=Lax` em produção. Bearer permanece aceita apenas para compatibilidade da API.
 - O widget pode restringir origens por assistente, mas a lista não substitui HTTPS e controles de segurança adicionais.
+- A allowlist do widget limita o uso público por domínio, mas não autentica visitantes e não substitui autenticação ou mitigação de abuso.
 - Sem fila/worker para processar documentos grandes.
 - SQLite como banco padrão; carga concorrente e operação de produção não foram validadas.
 - Sem confirmação de e-mail, recuperação de senha, cobrança ou métricas de uso completas.

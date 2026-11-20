@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     auth_rate_limit_per_minute: int = Field(default=10, gt=0)
     public_chat_rate_limit_per_minute: int = Field(default=20, gt=0)
     public_chat_daily_limit_per_bot: int = Field(default=500, gt=0)
+    widget_capability_per_minute: int = Field(default=60, gt=0)
     ai_max_output_tokens: int = Field(default=600, gt=0, le=4000)
 
     def validate_deployment(self) -> None:
